@@ -1,5 +1,5 @@
 // FILE: OnboardingWelcomePage.swift
-// Purpose: Welcome splash — first page of the onboarding flow with hero image.
+// Purpose: Welcome page for the onboarding flow.
 // Layer: View
 // Exports: OnboardingWelcomePage
 // Depends on: SwiftUI, AppFont
@@ -8,37 +8,59 @@ import SwiftUI
 
 struct OnboardingWelcomePage: View {
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .bottom) {
-                // Hero image — fit full width, pinned to top
-                Image("three")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
-                    .clipped()
-                    .ignoresSafeArea()
-
-                // Gradient fade to black — subtle, only at the bottom
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0.45),
-                        .init(color: .black.opacity(0.5), location: 0.6),
-                        .init(color: .black, location: 0.72),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+        ZStack {
+            Color(.secondarySystemBackground)
                 .ignoresSafeArea()
 
-                // Content overlaid at bottom
-                VStack(spacing: 24) {
+            VStack(spacing: 26) {
+                Spacer(minLength: 34)
+
+                VStack(spacing: 22) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(Color(.systemBackground))
+
+                        VStack(spacing: 18) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(.tertiarySystemFill))
+                                    .frame(width: 116, height: 116)
+
+                                Image(systemName: "iphone.gen3")
+                                    .font(.system(size: 56, weight: .regular))
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack(spacing: 10) {
+                                Image(systemName: "desktopcomputer")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+
+                                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                    .fill(Color.secondary.opacity(0.35))
+                                    .frame(width: 32, height: 2)
+
+                                Image(systemName: "iphone.gen3")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .frame(height: 260)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+
                     VStack(spacing: 8) {
                         Text("Chorus Remote")
                             .font(AppFont.system(size: 32, weight: .bold))
+                            .foregroundStyle(.primary)
 
                         Text("Control Codex from your iPhone.")
                             .font(AppFont.subheadline(weight: .regular))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
 
                     HStack(spacing: 6) {
@@ -47,19 +69,16 @@ struct OnboardingWelcomePage: View {
                         Text("End-to-end encrypted")
                             .font(AppFont.caption(weight: .medium))
                     }
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 28)
-                .padding(.bottom, 28)
+                .padding(.horizontal, 24)
+
+                Spacer(minLength: 120)
             }
         }
     }
 }
 
 #Preview {
-    ZStack {
-        Color.black.ignoresSafeArea()
-        OnboardingWelcomePage()
-    }
-    .preferredColorScheme(.dark)
+    OnboardingWelcomePage()
 }

@@ -85,10 +85,10 @@ struct SidebarThreadRowView: View {
             if thread.syncState == .archivedLocal {
                 Text("Archived")
                     .font(AppFont.caption2())
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.12), in: Capsule())
+                    .background(Color.secondary.opacity(0.10), in: Capsule())
             }
 
             expansionToggleButton

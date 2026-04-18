@@ -8,59 +8,63 @@ import SwiftUI
 
 struct OnboardingFeaturesPage: View {
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        ZStack {
+            Color(.secondarySystemBackground)
+                .ignoresSafeArea()
 
-            VStack(spacing: 40) {
-                VStack(spacing: 10) {
-                    Text("What you get")
-                        .font(AppFont.system(size: 28, weight: .bold))
-                        .foregroundStyle(.white)
+            VStack(spacing: 0) {
+                Spacer(minLength: 28)
 
-                    Text("Everything runs on your Mac.\nYour phone is the remote.")
-                        .font(AppFont.subheadline())
-                        .foregroundStyle(.white.opacity(0.45))
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(3)
+                VStack(spacing: 26) {
+                    VStack(spacing: 10) {
+                        Text("What you get")
+                            .font(AppFont.system(size: 28, weight: .bold))
+                            .foregroundStyle(.primary)
+
+                        Text("Everything runs on your Mac.\nYour phone is the remote.")
+                            .font(AppFont.subheadline())
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(3)
+                    }
+
+                    VStack(spacing: 10) {
+                        featureRow(
+                            icon: "hare.fill",
+                            color: .yellow,
+                            title: "Fast mode",
+                            subtitle: "Lower-latency turns for quick interactions"
+                        )
+                        featureRow(
+                            icon: "arrow.triangle.branch",
+                            color: .green,
+                            title: "Git from your phone",
+                            subtitle: "Commit, push, pull, and switch branches"
+                        )
+                        featureRow(
+                            icon: "lock.shield.fill",
+                            color: .cyan,
+                            title: "End-to-end encrypted",
+                            subtitle: "The relay never sees your prompts or code"
+                        )
+                        featureRow(
+                            icon: "waveform",
+                            color: .purple,
+                            title: "Voice mode",
+                            subtitle: "Talk to Codex with speech-to-text"
+                        )
+                        featureRow(
+                            icon: "point.3.connected.trianglepath.dotted",
+                            color: .orange,
+                            title: "Subagents, skills and /commands",
+                            subtitle: "Spawn and monitor parallel agents from your phone"
+                        )
+                    }
                 }
+                .padding(.horizontal, 24)
 
-                VStack(spacing: 16) {
-                    featureRow(
-                        icon: "hare.fill",
-                        color: .yellow,
-                        title: "Fast mode",
-                        subtitle: "Lower-latency turns for quick interactions"
-                    )
-                    featureRow(
-                        icon: "arrow.triangle.branch",
-                        color: .green,
-                        title: "Git from your phone",
-                        subtitle: "Commit, push, pull, and switch branches"
-                    )
-                    featureRow(
-                        icon: "lock.shield.fill",
-                        color: .cyan,
-                        title: "End-to-end encrypted",
-                        subtitle: "The relay never sees your prompts or code"
-                    )
-                    featureRow(
-                        icon: "waveform",
-                        color: .purple,
-                        title: "Voice mode",
-                        subtitle: "Talk to Codex with speech-to-text"
-                    )
-                    featureRow(
-                        icon: "point.3.connected.trianglepath.dotted",
-                        color: .orange,
-                        title: "Subagents, skills and /commands",
-                        subtitle: "Spawn and monitor parallel agents from your phone"
-                    )
-                }
-                .padding(.horizontal, 4)
+                Spacer(minLength: 120)
             }
-            .padding(.horizontal, 28)
-
-            Spacer()
         }
     }
 
@@ -79,23 +83,28 @@ struct OnboardingFeaturesPage: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(AppFont.subheadline(weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 Text(subtitle)
                     .font(AppFont.caption())
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
 
             Spacer(minLength: 0)
         }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 }
 
 #Preview {
-    ZStack {
-        Color.black.ignoresSafeArea()
-        OnboardingFeaturesPage()
-    }
-    .preferredColorScheme(.dark)
+    OnboardingFeaturesPage()
 }

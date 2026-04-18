@@ -19,6 +19,7 @@ struct OpenSourceBadge: View {
         Link(destination: repoURL) {
             HStack(spacing: 6) {
                 Image("github-mark-white")
+                    .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
                     .frame(width: 14, height: 14)

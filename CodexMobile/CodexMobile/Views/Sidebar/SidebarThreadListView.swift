@@ -232,11 +232,11 @@ struct SidebarThreadListView: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "archivebox")
-                        .font(AppFont.body(weight: .medium))
-                        .foregroundStyle(.primary)
+                        .font(AppFont.subheadline())
+                        .foregroundStyle(.tertiary)
                     Text(group.label)
-                        .font(AppFont.body(weight: .medium))
-                        .foregroundStyle(.primary)
+                        .font(AppFont.subheadline())
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                     Spacer()
                     Image(systemName: "chevron.right")

@@ -9,8 +9,11 @@ import UIKit
 struct SettingsView: View {
     @Environment(CodexService.self) private var codex
     @Environment(SubscriptionService.self) private var subscriptions
+    @Environment(\.dismiss) private var dismiss
 
     @AppStorage("codex.appFontStyle") private var appFontStyleRawValue = AppFont.defaultStoredStyleRawValue
+    @AppStorage("codex.hasSeenOnboarding") private var hasSeenOnboarding = false
+    @AppStorage("codex.onboardingStartPage") private var onboardingStartPage = 0
     @State private var isShowingMacNameSheet = false
 
     private let runtimeAutoValue = "__AUTO__"
@@ -19,10 +22,10 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 16) {
                 SettingsMacStatusCard()
+                SettingsSetupCard(onShowSetup: showSetupScreen)
                 SettingsArchivedChatsCard()
-                SettingsChorusPagesCard()
                 SettingsAppearanceCard(appFontStyle: appFontStyleBinding)
                 SettingsNotificationsCard()
                 SettingsGPTAccountCard()
@@ -33,7 +36,8 @@ struct SettingsView: View {
                 SettingsUsageCard()
                 connectionSection
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 18)
         }
         .background(Color(.secondarySystemBackground).ignoresSafeArea())
         .font(AppFont.body())
@@ -182,18 +186,6 @@ struct SettingsView: View {
             Toggle("Keep Mac reachable", isOn: keepMacAwakeWhileBridgeRunsBinding)
                 .tint(settingsAccentColor)
 
-            Text(codex.keepMacAwakeWhileBridgeRuns
-                 ? "Uses macOS caffeinate while the bridge is running so your Mac stays reachable even if the display turns off. Best while charging."
-                 : "Your Mac can go back to sleeping normally when the bridge is idle.")
-                .font(AppFont.caption())
-                .foregroundStyle(.secondary)
-
-            if !codex.isConnected {
-                Text("Saved on this iPhone. It will sync to your Mac the next time the bridge reconnects.")
-                    .font(AppFont.caption())
-                    .foregroundStyle(.secondary)
-            }
-
             if codex.isConnected {
                 SettingsButton("Disconnect", role: .destructive) {
                     HapticFeedback.shared.triggerImpactFeedback()
@@ -252,6 +244,13 @@ struct SettingsView: View {
             await codex.disconnect()
             codex.clearSavedRelaySession()
         }
+    }
+
+    private func showSetupScreen() {
+        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+        onboardingStartPage = 0
+        hasSeenOnboarding = false
+        dismiss()
     }
 
     // MARK: - Runtime bindings
@@ -324,16 +323,6 @@ private struct SettingsSubscriptionCard: View {
                     .foregroundStyle(subscriptions.hasProAccess ? .green : .secondary)
             }
 
-            if subscriptions.hasProAccess {
-                Text("Your Pro access is active. You can still restore purchases or manage the purchase from Apple.")
-                    .font(AppFont.caption())
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Open the custom paywall to choose a monthly, yearly, or lifetime plan.")
-                    .font(AppFont.caption())
-                    .foregroundStyle(.secondary)
-            }
-
             SettingsButton(subscriptions.hasProAccess ? "View Pro" : "Upgrade to Pro") {
                 isPresentingPaywall = true
             }
@@ -365,18 +354,22 @@ struct SettingsCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title.uppercased())
+            Text(title)
                 .font(AppFont.caption(weight: .semibold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
                 .padding(.bottom, 8)
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 content
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.tertiarySystemFill).opacity(0.5), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+            )
         }
     }
 }
@@ -409,7 +402,7 @@ struct SettingsButton: View {
             .padding(.vertical, 10)
             .background(
                 (role == .destructive ? Color.red : Color.primary).opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 10)
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
         }
         .buttonStyle(.plain)
@@ -502,21 +495,11 @@ private struct SettingsAppearanceCard: View {
                 .tint(settingsAccentColor)
             }
 
-            Text(appFontStyle.subtitle)
-                .font(AppFont.caption())
-                .foregroundStyle(.secondary)
-
             if GlassPreference.isSupported {
                 Divider()
 
                 Toggle("Liquid Glass", isOn: $useLiquidGlass)
                     .tint(settingsAccentColor)
-
-                Text(useLiquidGlass
-                     ? "Liquid Glass effects are enabled."
-                     : "Using solid material fallback.")
-                    .font(AppFont.caption())
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -536,10 +519,6 @@ private struct SettingsNotificationsCard: View {
                 Text(statusLabel)
                     .foregroundStyle(.secondary)
             }
-
-            Text("Used for local alerts when a run finishes while the app is in background.")
-                .font(AppFont.caption())
-                .foregroundStyle(.secondary)
 
             if codex.notificationAuthorizationStatus == .notDetermined {
                 SettingsButton("Allow notifications") {
@@ -643,11 +622,6 @@ private struct SettingsBridgeVersionCard: View {
                 valueStyle: .primary
             )
 
-            if let guidance = guidanceText {
-                Text(guidance)
-                    .font(AppFont.caption())
-                    .foregroundStyle(guidanceColor)
-            }
         }
         .task {
             await codex.refreshBridgeVersionState()
@@ -668,26 +642,6 @@ private struct SettingsBridgeVersionCard: View {
         normalizedVersion(codex.latestBridgePackageVersion) ?? "Unknown"
     }
 
-    private var guidanceText: String? {
-        guard let installedVersion else {
-            return "Connect to a Mac bridge to read the installed package version."
-        }
-
-        guard let latestVersion else {
-            return "Installed version detected. The latest published package is unavailable right now."
-        }
-
-        if installedVersion == latestVersion {
-            return "The installed bridge matches the latest published package."
-        }
-
-        if installedVersion.compare(latestVersion, options: .numeric) == .orderedAscending {
-            return "A newer Remodex package is available on npm."
-        }
-
-        return "This Mac is running a different build than the current npm latest."
-    }
-
     private var versionStatusLabel: String {
         guard let installedVersion else {
             return "Unknown"
@@ -706,16 +660,6 @@ private struct SettingsBridgeVersionCard: View {
         }
 
         return "Different build"
-    }
-
-    private var guidanceColor: Color {
-        guard let installedVersion,
-              let latestVersion,
-              installedVersion.compare(latestVersion, options: .numeric) == .orderedAscending else {
-            return .secondary
-        }
-
-        return .orange
     }
 
     private var installedValueStyle: Color {
@@ -772,7 +716,8 @@ private struct SettingsArchivedChatsCard: View {
             } label: {
                 HStack {
                     Label("Archived Chats", systemImage: "archivebox")
-                        .font(AppFont.subheadline(weight: .medium))
+                        .font(AppFont.subheadline())
+                        .foregroundStyle(.secondary)
                     Spacer()
                     if archivedCount > 0 {
                         Text("\(archivedCount)")
@@ -824,34 +769,15 @@ private struct SettingsMacStatusCard: View {
     }
 }
 
-private struct SettingsChorusPagesCard: View {
+private struct SettingsSetupCard: View {
+    let onShowSetup: () -> Void
+
     var body: some View {
-        SettingsCard(title: "Chorus") {
-            ForEach(ChorusRemoteGuidePage.allCases) { page in
-                NavigationLink {
-                    ChorusRemoteGuidePageView(page: page)
-                } label: {
-                    settingsRow(title: page.title, systemImage: page.iconName)
-                }
-                .buttonStyle(.plain)
+        SettingsCard(title: "Setup") {
+            SettingsButton("Reset and go to Onboarding") {
+                onShowSetup()
             }
         }
-    }
-
-    private func settingsRow(title: String, systemImage: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(AppFont.subheadline(weight: .medium))
-                .frame(width: 18)
-            Text(title)
-                .font(AppFont.subheadline(weight: .medium))
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(AppFont.caption(weight: .semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .foregroundStyle(.primary)
-        .contentShape(Rectangle())
     }
 }
 
@@ -860,10 +786,6 @@ private struct SettingsAboutCard: View {
 
     var body: some View {
         SettingsCard(title: "About") {
-            Text("Chats are End-to-end encrypted between your iPhone and Mac. The relay only sees ciphertext and connection metadata after the secure handshake completes.")
-                .font(AppFont.caption())
-                .foregroundStyle(.secondary)
-
             Button {
                 HapticFeedback.shared.triggerImpactFeedback(style: .light)
                 isShowingAbout = true

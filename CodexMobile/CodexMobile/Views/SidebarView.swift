@@ -146,9 +146,6 @@ struct SidebarView: View {
                 onSelectProject: { projectPath in
                     handleNewChatTap(preferredProjectPath: projectPath)
                 },
-                onSelectWorktreeProject: { projectPath in
-                    handleNewWorktreeChatTap(preferredProjectPath: projectPath)
-                },
                 onSelectWithoutProject: {
                     handleNewChatTap(preferredProjectPath: nil)
                 }
@@ -229,13 +226,8 @@ struct SidebarView: View {
         }
     }
 
-    // Shows a native sheet so folder names and full paths stay readable on small screens.
+    // Shows the project picker every time so New Project is reachable from the same menu.
     private func handleNewChatButtonTap() {
-        if newChatProjectChoices.isEmpty {
-            handleNewChatTap(preferredProjectPath: nil)
-            return
-        }
-
         isShowingNewChatProjectPicker = true
     }
 
@@ -255,26 +247,6 @@ struct SidebarView: View {
                 let message = error.localizedDescription
                 codex.lastErrorMessage = message
                 createThreadErrorMessage = message.isEmpty ? "Unable to create a chat right now." : message
-            }
-        }
-    }
-
-    private func handleNewWorktreeChatTap(preferredProjectPath: String) {
-        Task { @MainActor in
-            createThreadErrorMessage = nil
-            isCreatingThread = true
-            defer { isCreatingThread = false }
-
-            do {
-                let thread = try await WorktreeFlowCoordinator.startNewWorktreeChat(
-                    preferredProjectPath: preferredProjectPath,
-                    codex: codex
-                )
-                onOpenThread(thread)
-            } catch {
-                let message = error.localizedDescription
-                codex.lastErrorMessage = message
-                createThreadErrorMessage = message.isEmpty ? "Unable to create a worktree chat right now." : message
             }
         }
     }
@@ -452,112 +424,42 @@ enum SidebarThreadsLoadingPresentation {
 private struct SidebarNewChatProjectPickerSheet: View {
     let choices: [SidebarProjectChoice]
     let onSelectProject: (String) -> Void
-    let onSelectWorktreeProject: (String) -> Void
     let onSelectWithoutProject: () -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Text("Choose a project for this chat.")
-                        .font(AppFont.body())
-                        .foregroundStyle(.secondary)
-                        .listRowBackground(Color.clear)
-                }
+            ZStack(alignment: .bottom) {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        header
 
-                Section("Local") {
-                    ForEach(choices) { choice in
-                        Button {
-                            dismiss()
-                            onSelectProject(choice.projectPath)
-                        } label: {
-                            HStack(spacing: 12) {
-                                if choice.iconSystemName == "arrow.triangle.branch" {
-                                    CodexWorktreeIcon(pointSize: 16, weight: .medium)
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Image(systemName: choice.iconSystemName)
-                                        .font(AppFont.body(weight: .medium))
-                                        .foregroundStyle(.secondary)
-                                }
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Existing Folders")
+                                .font(AppFont.caption(weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 4)
 
-                                Text(choice.label)
-                                    .font(AppFont.body(weight: .semibold))
-                                    .foregroundStyle(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .padding(.vertical, 2)
-                        }
-                    }
-                }
-
-                if !choices.isEmpty {
-                    Section("Worktree") {
-                        ForEach(choices) { choice in
-                            Button {
-                                dismiss()
-                                onSelectWorktreeProject(choice.projectPath)
-                            } label: {
-                                HStack(alignment: .top, spacing: 12) {
-                                    CodexWorktreeIcon(pointSize: 16, weight: .medium)
-                                        .foregroundStyle(.secondary)
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(choice.label)
-                                            .font(AppFont.body(weight: .semibold))
-                                            .foregroundStyle(.primary)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                                        Text("Start a new chat in a managed detached worktree from the repo default branch.")
-                                            .font(AppFont.body())
-                                            .foregroundStyle(.secondary)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                            if choices.isEmpty {
+                                emptyState
+                            } else {
+                                VStack(spacing: 8) {
+                                    ForEach(choices) { choice in
+                                        projectChoiceButton(choice)
                                     }
                                 }
-                                .padding(.vertical, 2)
                             }
                         }
                     }
+                    .padding(20)
+                    .padding(.bottom, 112)
                 }
+                .background(Color(.secondarySystemBackground))
 
-                Section {
-                    Button {
-                        dismiss()
-                        onSelectWithoutProject()
-                    } label: {
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: "cloud")
-                                .font(AppFont.body(weight: .medium))
-                                .foregroundStyle(.secondary)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Cloud")
-                                    .font(AppFont.body(weight: .semibold))
-                                    .foregroundStyle(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                Text("Start a chat without a local working directory.")
-                                    .font(AppFont.body())
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                }
-
-                Section {
-                    // Explains the existing scoping rule at the exact moment the user chooses it.
-                    Text("Chats started in a project stay scoped to that working directory. Worktree chats start in a managed detached worktree. If you pick Cloud, the chat is global.")
-                        .font(AppFont.caption())
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .listRowBackground(Color.clear)
-                }
+                pinnedNewProjectButton
             }
-            .navigationTitle("Start new chat")
+            .navigationTitle("New Chat")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -567,6 +469,95 @@ private struct SidebarNewChatProjectPickerSheet: View {
                 }
             }
         }
-        .presentationDetents(choices.count > 4 ? [.medium, .large] : [.medium])
+        .presentationDetents(choices.count > 5 ? [.medium, .large] : [.medium])
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Choose a folder")
+                .font(AppFont.title3(weight: .semibold))
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Image(systemName: "folder")
+                .font(AppFont.title3())
+                .foregroundStyle(.secondary)
+
+            Text("No folders yet")
+                .font(AppFont.body(weight: .medium))
+                .foregroundStyle(.primary)
+
+            Text("Create a new project to start the first folder here.")
+                .font(AppFont.caption())
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemFill).opacity(0.45), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func projectChoiceButton(_ choice: SidebarProjectChoice) -> some View {
+        Button {
+            dismiss()
+            onSelectProject(choice.projectPath)
+        } label: {
+            HStack(alignment: .center, spacing: 12) {
+                Text(choice.label)
+                    .font(AppFont.body(weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.right")
+                    .font(AppFont.caption(weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.tertiarySystemFill).opacity(0.5), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var pinnedNewProjectButton: some View {
+        VStack(spacing: 0) {
+            LinearGradient(
+                colors: [
+                    Color(.secondarySystemBackground).opacity(0),
+                    Color(.secondarySystemBackground).opacity(0.94),
+                    Color(.secondarySystemBackground)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 56)
+            .allowsHitTesting(false)
+
+            Button {
+                dismiss()
+                onSelectWithoutProject()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "plus")
+                        .font(AppFont.subheadline(weight: .semibold))
+                    Text("New Project")
+                        .font(AppFont.body(weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Color.black, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+            .background(Color(.secondarySystemBackground))
+        }
     }
 }

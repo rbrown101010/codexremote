@@ -57,6 +57,7 @@ struct ContentView: View {
     @State private var lastSidebarGestureLogBucket: Int?
     @State private var sidebarGestureAutoCommitted = false
     @AppStorage("codex.hasSeenOnboarding") private var hasSeenOnboarding = false
+    @AppStorage("codex.onboardingStartPage") private var onboardingStartPage = 0
     @AppStorage("codex.whatsNew.lastPresentedVersion") private var lastPresentedWhatsNewVersion = ""
 
     private let sidebarWidth: CGFloat = 330
@@ -268,7 +269,7 @@ struct ContentView: View {
     @ViewBuilder
     private var rootContent: some View {
         if !hasSeenOnboarding {
-            OnboardingView {
+            OnboardingView(initialPage: onboardingStartPage) {
                 finishOnboardingAndShowScanner()
             }
         } else if subscriptions.bootstrapState == .failed && !subscriptions.hasAppAccess {
@@ -293,6 +294,7 @@ struct ContentView: View {
         codex.shouldAutoReconnectOnForeground = false
         codex.connectionRecoveryState = .idle
         codex.lastErrorMessage = nil
+        onboardingStartPage = 0
         withAnimation {
             hasSeenOnboarding = true
             isShowingManualScanner = true
