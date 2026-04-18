@@ -114,7 +114,7 @@ struct TurnComposerView: View {
 
                 ZStack(alignment: .topLeading) {
                     if input.isEmpty {
-                        Text("Ask anything... @files, $skills, /commands")
+                        Text("message codex")
                             .font(AppFont.body())
                             .foregroundStyle(Color(.placeholderText))
                             .allowsHitTesting(false)
@@ -164,10 +164,33 @@ struct TurnComposerView: View {
                     isQueuePaused: isQueuePaused,
                     activeTurnID: activeTurnID,
                     isThreadRunning: isThreadRunning,
+                    isEmptyThread: isEmptyThread,
+                    isWorktreeProject: isWorktreeProject,
                     voiceButtonPresentation: voiceButtonPresentation,
+                    selectedAccessMode: selectedAccessMode,
+                    contextWindowUsage: contextWindowUsage,
+                    rateLimitsErrorMessage: rateLimitsErrorMessage,
+                    showsGitBranchSelector: showsGitBranchSelector,
+                    isGitBranchSelectorEnabled: isGitBranchSelectorEnabled,
+                    availableGitBranchTargets: availableGitBranchTargets,
+                    gitBranchesCheckedOutElsewhere: gitBranchesCheckedOutElsewhere,
+                    gitWorktreePathsByBranch: gitWorktreePathsByBranch,
+                    selectedGitBaseBranch: selectedGitBaseBranch,
+                    currentGitBranch: currentGitBranch,
+                    gitDefaultBranch: gitDefaultBranch,
+                    isLoadingGitBranchTargets: isLoadingGitBranchTargets,
+                    isSwitchingGitBranch: isSwitchingGitBranch,
+                    isCreatingGitWorktree: isCreatingGitWorktree,
                     onTapAddImage: onTapAddImage,
                     onTapTakePhoto: onTapTakePhoto,
                     onTapVoice: onTapVoice,
+                    onSelectGitBranch: onSelectGitBranch,
+                    onSelectGitBaseBranch: onSelectGitBaseBranch,
+                    onRefreshGitBranches: onRefreshGitBranches,
+                    onRefreshUsageStatus: onRefreshUsageStatus,
+                    onSelectAccessMode: onSelectAccessMode,
+                    canHandOffToWorktree: canHandOffToWorktree,
+                    onTapCreateWorktree: onTapCreateWorktree,
                     onSetPlanModeArmed: onSetPlanModeArmed,
                     onResumeQueue: onResumeQueue,
                     onStopTurn: onStopTurn,
@@ -208,37 +231,6 @@ struct TurnComposerView: View {
             }
             .zIndex(2)
 
-            // Kept as a separate component so the lower meta bar can evolve without reopening this file.
-            TurnComposerSecondaryBar(
-                isInputFocused: isInputFocused.wrappedValue,
-                isEmptyThread: isEmptyThread,
-                isWorktreeProject: isWorktreeProject,
-                selectedAccessMode: selectedAccessMode,
-                contextWindowUsage: contextWindowUsage,
-                rateLimitBuckets: rateLimitBuckets,
-                isLoadingRateLimits: isLoadingRateLimits,
-                rateLimitsErrorMessage: rateLimitsErrorMessage,
-                shouldAutoRefreshUsageStatus: shouldAutoRefreshUsageStatus,
-                showsGitBranchSelector: showsGitBranchSelector,
-                isGitBranchSelectorEnabled: isGitBranchSelectorEnabled,
-                availableGitBranchTargets: availableGitBranchTargets,
-                gitBranchesCheckedOutElsewhere: gitBranchesCheckedOutElsewhere,
-                gitWorktreePathsByBranch: gitWorktreePathsByBranch,
-                selectedGitBaseBranch: selectedGitBaseBranch,
-                currentGitBranch: currentGitBranch,
-                gitDefaultBranch: gitDefaultBranch,
-                isLoadingGitBranchTargets: isLoadingGitBranchTargets,
-                isSwitchingGitBranch: isSwitchingGitBranch,
-                isCreatingGitWorktree: isCreatingGitWorktree,
-                onSelectGitBranch: onSelectGitBranch,
-                onCreateGitBranch: onCreateGitBranch,
-                onSelectGitBaseBranch: onSelectGitBaseBranch,
-                onRefreshGitBranches: onRefreshGitBranches,
-                onRefreshUsageStatus: onRefreshUsageStatus,
-                onSelectAccessMode: onSelectAccessMode,
-                canHandOffToWorktree: canHandOffToWorktree,
-                onTapCreateWorktree: onTapCreateWorktree
-            )
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)

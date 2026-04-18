@@ -24,12 +24,9 @@ struct HomeEmptyStateView<AuthSection: View, Footer: View>: View {
             Spacer()
 
             VStack(spacing: 20) {
-                Image("AppLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 88, height: 88)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .adaptiveGlass(in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                Text("Chorus Remote")
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .multilineTextAlignment(.center)
 
                 HStack(spacing: 6) {
                     Circle()
@@ -108,7 +105,7 @@ struct HomeEmptyStateView<AuthSection: View, Footer: View>: View {
                 .padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle("Remodex")
+        .navigationTitle("Chorus Remote")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if connectionPhase == .connecting {

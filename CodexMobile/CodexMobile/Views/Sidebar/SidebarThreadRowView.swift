@@ -20,7 +20,6 @@ struct SidebarThreadRowView: View {
     var onDelete: (() -> Void)? = nil
 
     @State private var renamePrompt = ThreadRenamePromptState()
-    private let titleLeadingSlotWidth: CGFloat = 16
 
     var body: some View {
         Group {
@@ -48,8 +47,6 @@ struct SidebarThreadRowView: View {
     private var parentRow: some View {
         Button(action: { HapticFeedback.shared.triggerImpactFeedback(style: .light); onTap() }) {
             HStack(alignment: .center, spacing: 8) {
-                leadingIndicatorSlot
-
                 // Keep trailing metadata inside the main stack so long titles truncate before it.
                 VStack(alignment: .leading, spacing: 4) {
                     Text(thread.displayTitle)
@@ -81,6 +78,10 @@ struct SidebarThreadRowView: View {
 
     private var parentTrailingMeta: some View {
         HStack(spacing: 6) {
+            if let runBadgeState {
+                SidebarThreadRunBadgeView(state: runBadgeState)
+            }
+
             if thread.syncState == .archivedLocal {
                 Text("Archived")
                     .font(AppFont.caption2())
@@ -88,10 +89,6 @@ struct SidebarThreadRowView: View {
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(Color.orange.opacity(0.12), in: Capsule())
-            }
-
-            if let diffTotals {
-                SidebarThreadDiffTotalsLabel(totals: diffTotals)
             }
 
             expansionToggleButton
@@ -112,8 +109,6 @@ struct SidebarThreadRowView: View {
     private var subagentRow: some View {
         Button(action: { HapticFeedback.shared.triggerImpactFeedback(style: .light); onTap() }) {
             HStack(alignment: .center, spacing: 8) {
-                leadingIndicatorSlot
-
                 SidebarSubagentNameLabel(thread: thread)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -144,19 +139,6 @@ struct SidebarThreadRowView: View {
     }
 
     // MARK: - Shared
-
-    @ViewBuilder
-    private var leadingIndicatorSlot: some View {
-        Group {
-            if let runBadgeState, !thread.isSubagent {
-                SidebarThreadRunBadgeView(state: runBadgeState)
-            } else {
-                Color.clear
-                    .frame(width: 10, height: 10)
-            }
-        }
-        .frame(width: titleLeadingSlotWidth, alignment: .center)
-    }
 
     @ViewBuilder
     private var expansionToggleButton: some View {

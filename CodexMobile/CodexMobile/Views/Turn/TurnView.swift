@@ -21,6 +21,8 @@ struct TurnView: View {
     @State private var viewModel = TurnViewModel()
     @State private var isInputFocused = false
     @State private var isShowingThreadPathSheet = false
+    @State private var isShowingThreadPathPreview = false
+    @State private var threadPathPreviewDismissTask: Task<Void, Never>?
     @State private var isShowingStatusSheet = false
     @State private var isLoadingRepositoryDiff = false
     @State private var repositoryDiffPresentation: TurnDiffPresentation?
@@ -181,7 +183,9 @@ struct TurnView: View {
                         gitWorkingDirectory: gitWorkingDirectory
                     )
                 },
-                isShowingPathSheet: $isShowingThreadPathSheet
+                isShowingPathSheet: $isShowingThreadPathSheet,
+                isShowingPathPreview: $isShowingThreadPathPreview,
+                onTapTitle: showThreadPathPreview
             )
         }
         .overlay {
@@ -1180,6 +1184,27 @@ struct TurnView: View {
         return codex.thread(for: parentThreadId)
     }
 
+    private func showThreadPathPreview() {
+        guard threadNavigationContext(for: currentResolvedThread) != nil else {
+            return
+        }
+
+        threadPathPreviewDismissTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.16)) {
+            isShowingThreadPathPreview = true
+        }
+
+        threadPathPreviewDismissTask = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    isShowingThreadPathPreview = false
+                }
+            }
+        }
+    }
+
     private func threadNavigationContext(for thread: CodexThread) -> TurnThreadNavigationContext? {
         guard let path = thread.gitWorkingDirectory,
               !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -1705,12 +1730,8 @@ struct TurnView: View {
     private func chatPlaceholderState(title: String, subtitle: String) -> some View {
         VStack(spacing: 12) {
             Spacer()
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .adaptiveGlass(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            Text("Chorus Remote")
+                .font(AppFont.title2(weight: .semibold))
             Text(title)
                 .font(AppFont.title2(weight: .semibold))
             Text(subtitle)

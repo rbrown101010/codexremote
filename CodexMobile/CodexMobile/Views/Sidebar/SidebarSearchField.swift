@@ -6,21 +6,18 @@
 import SwiftUI
 
 struct SidebarSearchField: View {
-    // Mirrors the selected sidebar row so the search field feels like part of the same list system.
-    private let selectedRowCornerRadius: CGFloat = 14
-
     @Binding var text: String
     @Binding var isActive: Bool
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .font(AppFont.subheadline())
                     .foregroundStyle(.secondary)
 
-                TextField("Search conversations", text: $text)
+                TextField("Search chats", text: $text)
                     .font(AppFont.subheadline())
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -37,14 +34,19 @@ struct SidebarSearchField: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.leading, 10)
-            .padding(.trailing, 16)
-            .padding(.vertical, 8)
+            .padding(.leading, 12)
+            .padding(.trailing, 12)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                Color(.tertiarySystemFill).opacity(0.8),
-                in: RoundedRectangle(cornerRadius: selectedRowCornerRadius, style: .continuous)
+                Color(.systemBackground),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.primary.opacity(isFocused ? 0.16 : 0.07), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(isFocused ? 0.06 : 0.025), radius: 10, y: 4)
 
             if isFocused {
                 Button("Cancel") {

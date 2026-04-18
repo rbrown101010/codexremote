@@ -46,7 +46,7 @@ enum AppFont {
 
     // MARK: - Read preference
 
-    static var currentStyle: Style { resolvedStoredStyle }
+    static var currentStyle: Style { .system }
 
     // MARK: - Private helpers
 
@@ -163,6 +163,11 @@ enum AppFont {
             return metrics.scaledFont(for: font)
         }
 
+        if let descriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: fallbackTextStyle)
+            .withDesign(.rounded) {
+            return UIFont(descriptor: descriptor, size: 0)
+        }
+
         return UIFont.preferredFont(forTextStyle: fallbackTextStyle)
     }
 
@@ -263,7 +268,7 @@ enum AppFont {
         size: CGFloat,
         weight: Font.Weight,
         style: Font.TextStyle,
-        systemDesign: Font.Design = .default
+        systemDesign: Font.Design = .rounded
     ) -> Font {
         let selectedStyle = currentStyle
         if selectedStyle == .system {
@@ -346,7 +351,7 @@ enum AppFont {
     static func system(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         let selectedStyle = currentStyle
         if selectedStyle == .system {
-            return .system(size: size, weight: weight)
+            return .system(size: size, weight: weight, design: .rounded)
         }
 
         let adjustedSize = max(size + fontSizeAdjustment(for: selectedStyle), 1)
@@ -354,6 +359,6 @@ enum AppFont {
             return .custom(faceName, size: adjustedSize)
         }
 
-        return .system(size: size, weight: weight)
+        return .system(size: size, weight: weight, design: .rounded)
     }
 }

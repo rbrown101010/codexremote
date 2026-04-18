@@ -5,6 +5,7 @@
 // Depends on: SwiftUI, TurnComposerMetaMapper
 
 import SwiftUI
+import UIKit
 
 struct ComposerBottomBar: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -24,10 +25,33 @@ struct ComposerBottomBar: View {
     let isQueuePaused: Bool
     let activeTurnID: String?
     let isThreadRunning: Bool
+    let isEmptyThread: Bool
+    let isWorktreeProject: Bool
     let voiceButtonPresentation: TurnComposerVoiceButtonPresentation
+    let selectedAccessMode: CodexAccessMode
+    let contextWindowUsage: ContextWindowUsage?
+    let rateLimitsErrorMessage: String?
+    let showsGitBranchSelector: Bool
+    let isGitBranchSelectorEnabled: Bool
+    let availableGitBranchTargets: [String]
+    let gitBranchesCheckedOutElsewhere: Set<String>
+    let gitWorktreePathsByBranch: [String: String]
+    let selectedGitBaseBranch: String
+    let currentGitBranch: String
+    let gitDefaultBranch: String
+    let isLoadingGitBranchTargets: Bool
+    let isSwitchingGitBranch: Bool
+    let isCreatingGitWorktree: Bool
     let onTapAddImage: () -> Void
     let onTapTakePhoto: () -> Void
     let onTapVoice: () -> Void
+    let onSelectGitBranch: (String) -> Void
+    let onSelectGitBaseBranch: (String) -> Void
+    let onRefreshGitBranches: () -> Void
+    let onRefreshUsageStatus: () async -> Void
+    let onSelectAccessMode: (CodexAccessMode) -> Void
+    let canHandOffToWorktree: Bool
+    let onTapCreateWorktree: () -> Void
     let onSetPlanModeArmed: (Bool) -> Void
     let onResumeQueue: () -> Void
     let onStopTurn: (String?) -> Void
@@ -60,9 +84,7 @@ struct ComposerBottomBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            attachmentMenu
-            modelMenu
-            reasoningMenu
+            settingsMenu
             if isPlanModeArmed {
                 Divider()
                     .frame(height: 16)
@@ -84,16 +106,6 @@ struct ComposerBottomBar: View {
                 .accessibilityLabel("Resume queued messages")
             }
 
-            // Voice → Stop → Send
-            Button {
-                HapticFeedback.shared.triggerImpactFeedback()
-                onTapVoice()
-            } label: {
-                voiceButtonLabel
-            }
-            .disabled(voiceButtonPresentation.isDisabled)
-            .accessibilityLabel(voiceButtonPresentation.accessibilityLabel)
-
             if isThreadRunning {
                 Button {
                     HapticFeedback.shared.triggerImpactFeedback()
@@ -105,69 +117,61 @@ struct ComposerBottomBar: View {
                         .frame(width: 32, height: 32)
                         .background(Color(.label), in: Circle())
                 }
-            }
-
-            Button {
-                HapticFeedback.shared.triggerImpactFeedback()
-                onSend()
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(AppFont.system(size: 12, weight: .bold))
-                    .foregroundStyle(sendButtonIconColor)
-                    .frame(width: 32, height: 32)
-                    .background(sendButtonBackgroundColor, in: Circle())
-            }
-            .overlay(alignment: .topTrailing) {
-                if queuedCount > 0 {
-                    queueBadge
-                        .offset(x: 8, y: -8)
+                .accessibilityLabel("Stop response")
+            } else {
+                Button {
+                    HapticFeedback.shared.triggerImpactFeedback()
+                    if isSendDisabled {
+                        onTapVoice()
+                    } else {
+                        onSend()
+                    }
+                } label: {
+                    combinedActionButtonLabel
                 }
+                .overlay(alignment: .topTrailing) {
+                    if queuedCount > 0 {
+                        queueBadge
+                            .offset(x: 8, y: -8)
+                    }
+                }
+                .disabled(isSendDisabled && voiceButtonPresentation.isDisabled)
+                .accessibilityLabel(isSendDisabled ? voiceButtonPresentation.accessibilityLabel : "Send message")
             }
-            .disabled(isSendDisabled)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 4)
         .padding(.top, 2)
     }
 
-    private var voiceButtonLabel: some View {
+    private var combinedActionButtonLabel: some View {
         Group {
-            if voiceButtonPresentation.showsProgress {
+            if isSendDisabled && voiceButtonPresentation.showsProgress {
                 ProgressView()
                     .tint(voiceButtonPresentation.foregroundColor)
                     .frame(width: 32, height: 32)
                     .background(voiceButtonPresentation.backgroundColor, in: Circle())
-            } else if voiceButtonPresentation.hasCircleBackground {
+            } else if isSendDisabled {
                 Image(systemName: voiceButtonPresentation.systemImageName)
                     .font(AppFont.system(size: 12, weight: .bold))
                     .foregroundStyle(voiceButtonPresentation.foregroundColor)
                     .frame(width: 32, height: 32)
                     .background(voiceButtonPresentation.backgroundColor, in: Circle())
             } else {
-                Image(systemName: voiceButtonPresentation.systemImageName)
-                    .font(metaTextFont)
-                    .foregroundStyle(metaLabelColor)
-                    .frame(width: plusTapTargetSide, height: plusTapTargetSide)
-                    .contentShape(Rectangle())
+                Image(systemName: "arrow.up")
+                    .font(AppFont.system(size: 12, weight: .bold))
+                    .foregroundStyle(sendButtonIconColor)
+                    .frame(width: 32, height: 32)
+                    .background(sendButtonBackgroundColor, in: Circle())
             }
         }
     }
 
     // MARK: - Menus
 
-    private var attachmentMenu: some View {
+    private var settingsMenu: some View {
         Menu {
-            Toggle(isOn: Binding(
-                get: { isPlanModeArmed },
-                set: { newValue in
-                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                    onSetPlanModeArmed(newValue)
-                }
-            )) {
-                Label("Plan mode", systemImage: "checklist")
-            }
-
-            Section {
+            Section("Add") {
                 Button("Photo library") {
                     HapticFeedback.shared.triggerImpactFeedback()
                     onTapAddImage()
@@ -180,6 +184,26 @@ struct ComposerBottomBar: View {
                 }
                 .disabled(remainingAttachmentSlots == 0)
             }
+
+            Section("Mode") {
+                Toggle(isOn: Binding(
+                    get: { isPlanModeArmed },
+                    set: { newValue in
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onSetPlanModeArmed(newValue)
+                    }
+                )) {
+                    Label("Plan mode", systemImage: "checklist")
+                }
+            }
+
+            modelMenuContent
+            reasoningMenuContent
+            speedMenuContent
+            accessMenuContent
+            runtimeMenuContent
+            branchMenuContent
+            usageMenuContent
         } label: {
             Image(systemName: "plus")
                 .font(metaTextFont)
@@ -189,12 +213,12 @@ struct ComposerBottomBar: View {
         }
         .tint(metaLabelColor)
         .disabled(isComposerInteractionLocked)
-        .accessibilityLabel("Attachment and plan options")
+        .accessibilityLabel("Composer settings")
     }
 
-    private var modelMenu: some View {
-        Menu {
-            Text("Select model")
+    @ViewBuilder
+    private var modelMenuContent: some View {
+        Section("Model") {
             if isLoadingModels {
                 Text("Loading models...")
             } else if orderedModelOptions.isEmpty {
@@ -213,74 +237,201 @@ struct ComposerBottomBar: View {
                     }
                 }
             }
-        } label: {
-            composerMenuLabel(
-                title: selectedModelTitle,
-                leadingImageName: runtimeState.showsSpeedBadgeInModelMenu ? "bolt.fill" : nil,
-                leadingImageIsSystem: true
-            )
         }
-        .fixedSize(horizontal: true, vertical: false)
-        .tint(metaLabelColor)
     }
 
-    private var reasoningMenu: some View {
-        Menu {
-            Section("Reasoning") {
-                if runtimeState.reasoningDisplayOptions.isEmpty {
-                    Text("No reasoning options")
+    @ViewBuilder
+    private var reasoningMenuContent: some View {
+        Section("Thinking Effort") {
+            Button {
+                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                runtimeActions.selectAutomaticReasoning()
+            } label: {
+                if runtimeState.selectedReasoningEffort == nil {
+                    Label("Automatic (\(runtimeState.selectedReasoningTitle))", systemImage: "checkmark")
                 } else {
-                    ForEach(runtimeState.reasoningDisplayOptions, id: \.id) { option in
-                        Button {
-                            HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                            runtimeActions.selectReasoning(option.effort)
-                        } label: {
-                            if runtimeState.isSelectedReasoning(option.effort) {
-                                Label(option.title, systemImage: "checkmark")
-                            } else {
-                                Text(option.title)
-                            }
-                        }
-                        .disabled(runtimeState.reasoningMenuDisabled)
-                    }
+                    Text("Automatic (\(runtimeState.selectedReasoningTitle))")
                 }
             }
+            .disabled(runtimeState.reasoningMenuDisabled)
 
-            Section("Speed") {
-                Button {
-                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                    runtimeActions.selectServiceTier(nil)
-                } label: {
-                    if runtimeState.isSelectedServiceTier(nil) {
-                        Label("Normal", systemImage: "checkmark")
-                    } else {
-                        Text("Normal")
-                    }
-                }
-
-                ForEach(CodexServiceTier.allCases, id: \.rawValue) { tier in
+            if runtimeState.reasoningDisplayOptions.isEmpty {
+                Text("No thinking options")
+            } else {
+                ForEach(runtimeState.reasoningDisplayOptions, id: \.id) { option in
                     Button {
                         HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                        runtimeActions.selectServiceTier(tier)
+                        runtimeActions.selectReasoning(option.effort)
                     } label: {
-                        if runtimeState.isSelectedServiceTier(tier) {
-                            Label(tier.displayName, systemImage: "checkmark")
+                        if runtimeState.selectedReasoningEffort != nil && runtimeState.isSelectedReasoning(option.effort) {
+                            Label(option.title, systemImage: "checkmark")
                         } else {
-                            Text(tier.displayName)
+                            Text(option.title)
                         }
+                    }
+                    .disabled(runtimeState.reasoningMenuDisabled)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var speedMenuContent: some View {
+        Section("Speed") {
+            Button {
+                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                runtimeActions.selectServiceTier(nil)
+            } label: {
+                if runtimeState.isSelectedServiceTier(nil) {
+                    Label("Normal", systemImage: "checkmark")
+                } else {
+                    Text("Normal")
+                }
+            }
+
+            ForEach(CodexServiceTier.allCases, id: \.rawValue) { tier in
+                Button {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    runtimeActions.selectServiceTier(tier)
+                } label: {
+                    if runtimeState.isSelectedServiceTier(tier) {
+                        Label(tier.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(tier.displayName)
                     }
                 }
             }
-        } label: {
-            composerMenuLabel(
-                title: runtimeState.selectedReasoningTitle,
-                leadingImageName: reasoningSymbolName,
-                leadingImageIsSystem: false
-            )
         }
-        .fixedSize(horizontal: true, vertical: false)
-        .layoutPriority(1)
-        .tint(metaLabelColor)
+    }
+
+    @ViewBuilder
+    private var accessMenuContent: some View {
+        Section("Access") {
+            ForEach(CodexAccessMode.allCases, id: \.rawValue) { mode in
+                Button {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    onSelectAccessMode(mode)
+                } label: {
+                    if selectedAccessMode == mode {
+                        Label(mode.menuTitle, systemImage: "checkmark")
+                    } else {
+                        Text(mode.menuTitle)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var runtimeMenuContent: some View {
+        Section("Continue In") {
+            Button {
+                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                if let url = URL(string: "https://chatgpt.com/codex") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label("Cloud", systemImage: "cloud")
+            }
+
+            Button {
+                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                onTapCreateWorktree()
+            } label: {
+                Label(
+                    isCreatingGitWorktree
+                        ? "Preparing worktree..."
+                        : isWorktreeProject ? "Hand off to Local" : isEmptyThread ? "New worktree" : "Hand off to Worktree",
+                    systemImage: isWorktreeProject ? "laptopcomputer" : "externaldrive.connected.to.line.below"
+                )
+            }
+            .disabled(!canHandOffToWorktree || isCreatingGitWorktree || isSwitchingGitBranch)
+
+            Button {
+            } label: {
+                Label("Local", systemImage: "laptopcomputer")
+            }
+            .disabled(true)
+        }
+    }
+
+    @ViewBuilder
+    private var branchMenuContent: some View {
+        if showsGitBranchSelector {
+            Section("Branch") {
+                if isLoadingGitBranchTargets {
+                    Text("Loading branches...")
+                } else if availableGitBranchTargets.isEmpty {
+                    Text(currentGitBranch.isEmpty ? "No branches available" : "Current: \(currentGitBranch)")
+                } else {
+                    branchButton(for: gitDefaultBranch)
+
+                    ForEach(availableGitBranchTargets.filter { $0 != gitDefaultBranch }, id: \.self) { branch in
+                        branchButton(for: branch)
+                    }
+                }
+
+                Button {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    onRefreshGitBranches()
+                } label: {
+                    Label("Refresh branches", systemImage: "arrow.clockwise")
+                }
+                .disabled(!isGitBranchSelectorEnabled || isLoadingGitBranchTargets || isSwitchingGitBranch)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func branchButton(for branch: String) -> some View {
+        if !branch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let checkedOutElsewhere = gitBranchesCheckedOutElsewhere.contains(branch)
+            let checkedOutPath = gitWorktreePathsByBranch[branch]
+            let isDisabled = remodexCurrentBranchSelectionIsDisabled(
+                branch: branch,
+                currentBranch: currentGitBranch,
+                gitBranchesCheckedOutElsewhere: gitBranchesCheckedOutElsewhere,
+                gitWorktreePathsByBranch: gitWorktreePathsByBranch,
+                allowsSelectingCurrentBranch: true
+            )
+
+            Button {
+                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                onSelectGitBranch(branch)
+            } label: {
+                let title = checkedOutElsewhere && checkedOutPath != nil
+                    ? "\(branch) (worktree)"
+                    : branch
+                if branch == currentGitBranch {
+                    Label(title, systemImage: "checkmark")
+                } else {
+                    Text(title)
+                }
+            }
+            .disabled(!isGitBranchSelectorEnabled || isLoadingGitBranchTargets || isSwitchingGitBranch || isDisabled)
+        }
+    }
+
+    @ViewBuilder
+    private var usageMenuContent: some View {
+        Section("Usage") {
+            if let contextWindowUsage {
+                Text("\(contextWindowUsage.percentUsed)% used · \(contextWindowUsage.tokensUsedFormatted)/\(contextWindowUsage.tokenLimitFormatted)")
+            } else if let rateLimitsErrorMessage {
+                Text(rateLimitsErrorMessage)
+            } else {
+                Text("Usage not loaded")
+            }
+
+            Button {
+                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                Task {
+                    await onRefreshUsageStatus()
+                }
+            } label: {
+                Label("Refresh usage", systemImage: "arrow.clockwise")
+            }
+        }
     }
 
     private var planModeIndicator: some View {

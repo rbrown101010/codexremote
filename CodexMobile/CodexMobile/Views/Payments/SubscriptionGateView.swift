@@ -78,18 +78,12 @@ struct SubscriptionGateView: View {
 
     private var hero: some View {
         VStack(spacing: 20) {
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 78, height: 78)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(heroStrokeColor, lineWidth: 1)
-                )
+            Text("Chorus Remote")
+                .font(AppFont.system(size: 30, weight: .bold))
+                .foregroundStyle(primaryTextColor)
 
             VStack(spacing: 10) {
-                Text("Remodex Pro Required")
+                Text("Chorus Remote Pro Required")
                     .font(AppFont.system(size: 24, weight: .bold))
                     .foregroundStyle(primaryTextColor)
                     .multilineTextAlignment(.center)
@@ -270,7 +264,7 @@ struct SubscriptionGateView: View {
     private var pricingPlaceholderRow: some View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Remodex Pro")
+                Text("Chorus Remote Pro")
                     .font(AppFont.subheadline(weight: .semibold))
                 Text("$0.00 / month")
                     .font(AppFont.caption())

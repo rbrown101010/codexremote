@@ -496,7 +496,7 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
             // Keep new/empty chats static to avoid scroll indicators and inert scrolling.
             emptyTimelineState
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
+                .background(Color(.secondarySystemBackground))
                 .contentShape(Rectangle())
                 .onTapGesture {
                     onTapOutsideComposer()
@@ -546,7 +546,7 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                         .allowsHitTesting(false)
                 }
                 .accessibilityIdentifier("turn.timeline.scrollview")
-                .background(Color(.systemBackground))
+                .background(Color(.secondarySystemBackground))
                 .overlay {
                     if shouldShowFullTimelineLoader {
                         timelineLoadingOverlay
@@ -841,7 +841,7 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
     }
 
     // Stages the recent tail for heavy chats so thread switches avoid building dozens

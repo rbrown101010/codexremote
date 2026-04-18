@@ -275,7 +275,14 @@ struct ContentView: View {
             SubscriptionBootstrapFailureView()
         } else if !subscriptions.hasAppAccess {
             SubscriptionGateView()
-        } else if shouldShowQRScanner {
+        } else {
+            remoteAppBody
+        }
+    }
+
+    @ViewBuilder
+    private var remoteAppBody: some View {
+        if shouldShowQRScanner {
             qrScannerBody
         } else {
             mainAppBody
@@ -305,6 +312,9 @@ struct ContentView: View {
     private var qrScannerBody: some View {
         QRScannerView(
             onBack: scannerBackAction,
+            onManualCode: {
+                presentManualPairingEntryAfterStoppingReconnect()
+            },
             onScan: { pairingPayload in
                 Task {
                     isShowingManualScanner = false

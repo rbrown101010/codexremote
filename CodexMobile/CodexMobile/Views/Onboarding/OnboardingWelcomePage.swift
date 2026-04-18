@@ -32,25 +32,8 @@ struct OnboardingWelcomePage: View {
 
                 // Content overlaid at bottom
                 VStack(spacing: 24) {
-                    Image("AppLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 72, height: 72)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [.white.opacity(0.25), .white.opacity(0.04)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 1
-                                )
-                        )
-
                     VStack(spacing: 8) {
-                        Text("Remodex")
+                        Text("Chorus Remote")
                             .font(AppFont.system(size: 32, weight: .bold))
 
                         Text("Control Codex from your iPhone.")

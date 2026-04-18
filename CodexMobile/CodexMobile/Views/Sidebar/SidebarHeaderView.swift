@@ -7,20 +7,27 @@ import SwiftUI
 
 struct SidebarHeaderView: View {
     var showsCloseButton = false
+    var onSettings: () -> Void = {}
     var onClose: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 10) {
-            Image("AppLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 26, height: 26)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            Text("Remodex")
-                .font(AppFont.title3(weight: .medium))
+            Text("Chorus Remote")
+                .font(AppFont.title3(weight: .semibold))
+                .padding(.leading, 8)
 
             Spacer(minLength: 0)
+
+            Button(action: onSettings) {
+                Image(systemName: "gearshape.fill")
+                    .font(AppFont.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .adaptiveGlass(.regular, in: Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
 
             if showsCloseButton {
                 // Mirrors the top-bar menu affordance so full-width sidebar presentations still

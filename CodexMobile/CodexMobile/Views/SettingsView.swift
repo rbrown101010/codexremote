@@ -20,7 +20,9 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                SettingsMacStatusCard()
                 SettingsArchivedChatsCard()
+                SettingsChorusPagesCard()
                 SettingsAppearanceCard(appFontStyle: appFontStyleBinding)
                 SettingsNotificationsCard()
                 SettingsGPTAccountCard()
@@ -33,6 +35,7 @@ struct SettingsView: View {
             }
             .padding()
         }
+        .background(Color(.secondarySystemBackground).ignoresSafeArea())
         .font(AppFont.body())
         .navigationTitle("Settings")
         .sheet(isPresented: $isShowingMacNameSheet) {
@@ -783,6 +786,72 @@ private struct SettingsArchivedChatsCard: View {
             }
             .buttonStyle(.plain)
         }
+    }
+}
+
+private struct SettingsMacStatusCard: View {
+    @Environment(CodexService.self) private var codex
+
+    var body: some View {
+        SettingsCard(title: "Mac") {
+            HStack(alignment: .center, spacing: 12) {
+                Circle()
+                    .fill(codex.isConnected ? Color.green : Color.secondary)
+                    .frame(width: 10, height: 10)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(codex.isConnected ? "Connected to Mac" : "Saved Mac")
+                        .font(AppFont.subheadline(weight: .semibold))
+                    Text(macName)
+                        .font(AppFont.caption())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var macName: String {
+        guard let trustedPairPresentation = codex.trustedPairPresentation else {
+            return "No Mac paired"
+        }
+        if let systemName = trustedPairPresentation.systemName, !systemName.isEmpty {
+            return "\(trustedPairPresentation.name) · \(systemName)"
+        }
+        return trustedPairPresentation.name
+    }
+}
+
+private struct SettingsChorusPagesCard: View {
+    var body: some View {
+        SettingsCard(title: "Chorus") {
+            ForEach(ChorusRemoteGuidePage.allCases) { page in
+                NavigationLink {
+                    ChorusRemoteGuidePageView(page: page)
+                } label: {
+                    settingsRow(title: page.title, systemImage: page.iconName)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func settingsRow(title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(AppFont.subheadline(weight: .medium))
+                .frame(width: 18)
+            Text(title)
+                .font(AppFont.subheadline(weight: .medium))
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(AppFont.caption(weight: .semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .foregroundStyle(.primary)
+        .contentShape(Rectangle())
     }
 }
 

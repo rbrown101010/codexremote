@@ -35,9 +35,10 @@ struct TurnToolbarContent: ToolbarContent {
     let onGitAction: (TurnGitActionKind) -> Void
 
     @Binding var isShowingPathSheet: Bool
+    @Binding var isShowingPathPreview: Bool
+    let onTapTitle: () -> Void
 
     var body: some ToolbarContent {
-        let hasTrailingCluster = repoDiffTotals != nil || showsGitActions
         let isThreadActionLoading = isHandingOffToMac || isStartingNewChat
         let canTapMacHandoff = onTapMacHandoff != nil && !isThreadActionLoading
         let canTapWorktreeHandoff = onTapWorktreeHandoff != nil
@@ -45,15 +46,22 @@ struct TurnToolbarContent: ToolbarContent {
             && !isCreatingGitWorktree
             && !isThreadActionLoading
         let canTapNewChat = onTapNewChat != nil && !isThreadActionLoading
+        let hasAnyTrailingAction = showsThreadActions || repoDiffTotals != nil || showsGitActions
 
         ToolbarItem(placement: .principal) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(displayTitle)
-                    .font(AppFont.headline())
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    onTapTitle()
+                } label: {
+                    Text(displayTitle)
+                        .font(AppFont.headline())
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
 
-                if let context = navigationContext {
+                if let context = navigationContext, isShowingPathPreview {
                     Button {
                         HapticFeedback.shared.triggerImpactFeedback(style: .light)
                         isShowingPathSheet = true
@@ -71,82 +79,103 @@ struct TurnToolbarContent: ToolbarContent {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
 
-        if showsThreadActions {
+        if hasAnyTrailingAction {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    // Keeps all "branch from here" actions together behind the compact toolbar affordance.
-                    Button {
-                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                        onTapMacHandoff?()
-                    } label: {
-                        HStack(spacing: 10) {
-                            ResizableThreadActionSymbol(systemName: "arrow.left.arrow.right", pointSize: 13)
-                            Text("Hand off to Mac")
+                    if showsThreadActions {
+                        Section("Chat") {
+                            Button {
+                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                                onTapMacHandoff?()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    ResizableThreadActionSymbol(systemName: "arrow.left.arrow.right", pointSize: 13)
+                                    Text("Hand off to Mac")
+                                }
+                            }
+                            .disabled(!canTapMacHandoff)
+
+                            Button {
+                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                                onTapWorktreeHandoff?()
+                            } label: {
+                                CodexWorktreeMenuLabelRow(
+                                    title: isCreatingGitWorktree ? "Preparing worktree..." : worktreeHandoffTitle,
+                                    pointSize: 12,
+                                    weight: .regular
+                                )
+                            }
+                            .disabled(!canTapWorktreeHandoff)
+
+                            Button {
+                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                                onTapNewChat?()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    ResizableThreadActionSymbol(systemName: "plus.app", pointSize: 13)
+                                    Text("New chat")
+                                }
+                            }
+                            .disabled(!canTapNewChat)
                         }
                     }
-                    .disabled(!canTapMacHandoff)
 
-                    Button {
-                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                        onTapWorktreeHandoff?()
-                    } label: {
-                        CodexWorktreeMenuLabelRow(
-                            title: isCreatingGitWorktree ? "Preparing worktree..." : worktreeHandoffTitle,
-                            pointSize: 12,
-                            weight: .regular
-                        )
-                    }
-                    .disabled(!canTapWorktreeHandoff)
-
-                    Button {
-                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                        onTapNewChat?()
-                    } label: {
-                        HStack(spacing: 10) {
-                            ResizableThreadActionSymbol(systemName: "plus.app", pointSize: 13)
-                            Text("New chat")
+                    if let repoDiffTotals {
+                        Section("Changes") {
+                            Button {
+                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                                onTapRepoDiff?()
+                            } label: {
+                                Label(
+                                    "+\(repoDiffTotals.additions) -\(repoDiffTotals.deletions)",
+                                    systemImage: "doc.text.magnifyingglass"
+                                )
+                            }
+                            .disabled(onTapRepoDiff == nil || isLoadingRepoDiff)
                         }
                     }
-                    .disabled(!canTapNewChat)
+
+                    if showsGitActions {
+                        Section("Update") {
+                            gitActionButton(for: .syncNow)
+                        }
+
+                        Section("Write") {
+                            ForEach([TurnGitActionKind.commit, .push, .commitAndPush, .createPR], id: \.self) { action in
+                                gitActionButton(for: action)
+                            }
+                        }
+
+                        if showsDiscardRuntimeChangesAndSync {
+                            Section("Recovery") {
+                                gitActionButton(for: .discardRuntimeChangesAndSync)
+                            }
+                        }
+                    }
                 } label: {
-                    TurnMacHandoffToolbarLabel(isLoading: isThreadActionLoading)
+                    TurnToolbarCombinedActionsLabel(isLoading: isThreadActionLoading || isRunningGitAction)
                 }
-                .accessibilityLabel("Thread actions")
-            }
-        }
-
-        if showsThreadActions, hasTrailingCluster {
-            if #available(iOS 26.0, *) {
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
-            }
-        }
-
-        if repoDiffTotals != nil || showsGitActions {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if let repoDiffTotals {
-                    TurnToolbarDiffTotalsLabel(
-                        totals: repoDiffTotals,
-                        isLoading: isLoadingRepoDiff,
-                        onTap: onTapRepoDiff
-                    )
-                }
-
-                if showsGitActions {
-                    TurnGitActionsToolbarButton(
-                        isEnabled: isGitActionEnabled,
-                        disabledActions: disabledGitActions,
-                        isRunningAction: isRunningGitAction,
-                        showsDiscardRuntimeChangesAndSync: showsDiscardRuntimeChangesAndSync,
-                        gitSyncState: gitSyncState,
-                        onSelect: onGitAction
-                    )
-                }
+                .accessibilityLabel("Chat actions")
             }
         }
     }
+
+    private func gitActionButton(for action: TurnGitActionKind) -> some View {
+        Button {
+            HapticFeedback.shared.triggerImpactFeedback()
+            onGitAction(action)
+        } label: {
+            Label {
+                Text(action.title)
+            } icon: {
+                Image(uiImage: action.menuIcon())
+            }
+        }
+        .disabled(!isGitActionEnabled || disabledGitActions.contains(action))
+    }
 }
 
-private struct TurnMacHandoffToolbarLabel: View {
+private struct TurnToolbarCombinedActionsLabel: View {
     let isLoading: Bool
 
     var body: some View {
@@ -156,7 +185,7 @@ private struct TurnMacHandoffToolbarLabel: View {
                     .controlSize(.small)
                     .frame(width: 24, height: 24)
             } else {
-                ResizableThreadActionSymbol(systemName: "arrow.trianglehead.branch", pointSize: 14)
+                ResizableThreadActionSymbol(systemName: "ellipsis", pointSize: 17)
                     .foregroundStyle(.primary)
                     .frame(width: 24, height: 24)
             }

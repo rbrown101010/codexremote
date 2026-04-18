@@ -58,6 +58,7 @@ struct SidebarThreadListView: View {
             .padding(.bottom, bottomContentInset)
         }
         .scrollDismissesKeyboard(.interactively)
+        .background(Color(.secondarySystemBackground))
         .task(id: visibleSubagentThreadIDs) {
             await codex.loadSubagentThreadMetadataIfNeeded(threadIds: visibleSubagentThreadIDs)
         }
@@ -128,9 +129,14 @@ struct SidebarThreadListView: View {
                     }
                 }
                 .padding(.bottom, 14)
-                .transition(.opacity)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .top)),
+                    removal: .opacity.combined(with: .scale(scale: 0.98, anchor: .top))
+                ))
             }
         }
+        .clipped()
+        .animation(.easeInOut(duration: 0.22), value: expandedProjectGroupIDs)
     }
 
     @State private var showMoreChevronRotated = false
@@ -171,14 +177,11 @@ struct SidebarThreadListView: View {
                 toggleProjectGroupExpansion(group.id)
             } label: {
                 HStack(spacing: 8) {
-                    if group.iconSystemName == "arrow.triangle.branch" {
-                        CodexWorktreeIcon(pointSize: 16, weight: .medium)
-                            .foregroundStyle(.primary)
-                    } else {
-                        Image(systemName: group.iconSystemName)
-                            .font(AppFont.body(weight: .medium))
-                            .foregroundStyle(.primary)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(AppFont.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 14, height: 14)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text(group.label)
                         .font(AppFont.body(weight: .medium))
                         .foregroundStyle(.primary)
@@ -200,12 +203,6 @@ struct SidebarThreadListView: View {
             }
 
             HStack(spacing: 8) {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(AppFont.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 14, height: 14)
-                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
-
                 Button {
                     HapticFeedback.shared.triggerImpactFeedback()
                     onCreateThreadInProjectGroup(group)
@@ -401,20 +398,22 @@ struct SidebarThreadListView: View {
     }
 
     private func toggleProjectGroupExpansion(_ groupID: String) {
-        var persistedCollapsedGroupIDs = SidebarProjectExpansionState.decodePersistedGroupIDs(
-            collapsedProjectGroupIDsStorage
-        )
-        if expandedProjectGroupIDs.contains(groupID) {
-            expandedProjectGroupIDs.remove(groupID)
-            revealedProjectGroupIDs.remove(groupID)
-            persistedCollapsedGroupIDs.insert(groupID)
-        } else {
-            expandedProjectGroupIDs.insert(groupID)
-            persistedCollapsedGroupIDs.remove(groupID)
+        withAnimation(.easeInOut(duration: 0.22)) {
+            var persistedCollapsedGroupIDs = SidebarProjectExpansionState.decodePersistedGroupIDs(
+                collapsedProjectGroupIDsStorage
+            )
+            if expandedProjectGroupIDs.contains(groupID) {
+                expandedProjectGroupIDs.remove(groupID)
+                revealedProjectGroupIDs.remove(groupID)
+                persistedCollapsedGroupIDs.insert(groupID)
+            } else {
+                expandedProjectGroupIDs.insert(groupID)
+                persistedCollapsedGroupIDs.remove(groupID)
+            }
+            collapsedProjectGroupIDsStorage = SidebarProjectExpansionState.encodePersistedGroupIDs(
+                persistedCollapsedGroupIDs
+            )
         }
-        collapsedProjectGroupIDsStorage = SidebarProjectExpansionState.encodePersistedGroupIDs(
-            persistedCollapsedGroupIDs
-        )
     }
 
     // Keep project sections expanded after regrouping so live updates do not collapse the sidebar.
@@ -460,10 +459,12 @@ struct SidebarThreadListView: View {
     }
 
     private func toggleSubagentExpansion(parentThreadID: String) {
-        if expandedSubagentParentIDs.contains(parentThreadID) {
-            expandedSubagentParentIDs.remove(parentThreadID)
-        } else {
-            expandedSubagentParentIDs.insert(parentThreadID)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if expandedSubagentParentIDs.contains(parentThreadID) {
+                expandedSubagentParentIDs.remove(parentThreadID)
+            } else {
+                expandedSubagentParentIDs.insert(parentThreadID)
+            }
         }
     }
 

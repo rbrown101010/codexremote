@@ -1,5 +1,5 @@
 // FILE: SidebarNewChatButton.swift
-// Purpose: Renders the "New Chat" action with loading and disabled states.
+// Purpose: Renders the floating New Chat action with loading and disabled states.
 // Layer: View Component
 // Exports: SidebarNewChatButton
 
@@ -16,37 +16,28 @@ struct SidebarNewChatButton: View {
             HapticFeedback.shared.triggerImpactFeedback()
             action()
         }) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    if isCreatingThread {
-                        ProgressView()
-                            .tint(.primary)
-                            .scaleEffect(0.85)
-                    } else {
-                        Image(systemName: "plus.app")
-                            .font(AppFont.title3(weight: .regular))
-                    }
+            ZStack {
+                Circle()
+                    .fill(Color.black)
 
-                    Text("New Chat")
-                        .font(AppFont.body(weight: .medium))
-                }
-
-                if let statusMessage, isCreatingThread, !statusMessage.isEmpty {
-                    Text(statusMessage)
-                        .font(AppFont.caption())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                if isCreatingThread {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(0.9)
+                } else {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(AppFont.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
             }
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 16)
-            .contentShape(Rectangle())
+            .frame(width: 58, height: 58)
+            .shadow(color: Color.black.opacity(0.16), radius: 14, y: 6)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .disabled(!isEnabled || isCreatingThread)
-        .opacity(isEnabled ? 1 : 0.35)
+        .opacity(isEnabled ? 1 : 0.38)
+        .accessibilityLabel(statusMessage ?? "New chat")
     }
 }
 // MARK: - Previews

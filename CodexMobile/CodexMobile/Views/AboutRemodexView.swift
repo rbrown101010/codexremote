@@ -36,7 +36,7 @@ struct AboutRemodexView: View {
                 .padding(.bottom, 40)
             }
             .font(AppFont.body())
-            .navigationTitle("About Remodex")
+            .navigationTitle("About Chorus Remote")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -50,7 +50,7 @@ struct AboutRemodexView: View {
 
     @ViewBuilder private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Remodex")
+            Text("Chorus Remote")
                 .font(AppFont.headline(weight: .bold))
                 .foregroundStyle(.primary)
 

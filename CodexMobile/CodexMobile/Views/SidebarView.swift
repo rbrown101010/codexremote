@@ -35,18 +35,58 @@ struct SidebarView: View {
     @State private var sidebarDebugSequence = 0
 
     var body: some View {
-        let diffTotalsByThreadID = cachedDiffTotals
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 0) {
+                SidebarHeaderView(
+                    showsCloseButton: showsInlineCloseButton,
+                    onSettings: openSettings,
+                    onClose: onClose
+                )
 
-        VStack(alignment: .leading, spacing: 0) {
-            SidebarHeaderView(
-                showsCloseButton: showsInlineCloseButton,
-                onClose: onClose
-            )
+                SidebarSearchField(text: $searchText, isActive: $isSearchActive)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
 
-            SidebarSearchField(text: $searchText, isActive: $isSearchActive)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+                SidebarThreadListView(
+                    isFiltering: !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    isConnected: codex.isConnected,
+                    isCreatingThread: isCreatingThread,
+                    threads: codex.threads,
+                    groups: groupedThreads,
+                    selectedThread: selectedThread,
+                    bottomContentInset: 96,
+                    timingLabelProvider: { SidebarRelativeTimeFormatter.compactLabel(for: $0) },
+                    diffTotalsByThreadID: [:],
+                    runBadgeStateByThreadID: cachedRunBadges,
+                    onSelectThread: selectThread,
+                    onCreateThreadInProjectGroup: { group in
+                        handleNewChatTap(preferredProjectPath: group.projectPath)
+                    },
+                    onArchiveProjectGroup: { group in
+                        projectGroupPendingArchive = group
+                    },
+                    onRenameThread: { thread, newName in
+                        codex.renameThread(thread.id, name: newName)
+                    },
+                    onArchiveToggleThread: { thread in
+                        if thread.syncState == .archivedLocal {
+                            codex.unarchiveThread(thread.id)
+                        } else {
+                            codex.archiveThread(thread.id)
+                            if selectedThread?.id == thread.id {
+                                selectedThread = nil
+                            }
+                        }
+                    },
+                    onDeleteThread: { thread in
+                        threadPendingDeletion = thread
+                    }
+                )
+                .refreshable {
+                    await refreshThreads()
+                }
+            }
 
             SidebarNewChatButton(
                 isCreatingThread: isCreatingThread,
@@ -54,64 +94,11 @@ struct SidebarView: View {
                 statusMessage: nil,
                 action: handleNewChatButtonTap
             )
-            .padding(.horizontal, 16)
-            .padding(.bottom, 10)
-
-            SidebarThreadListView(
-                isFiltering: !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                isConnected: codex.isConnected,
-                isCreatingThread: isCreatingThread,
-                threads: codex.threads,
-                groups: groupedThreads,
-                selectedThread: selectedThread,
-                bottomContentInset: 0,
-                timingLabelProvider: { SidebarRelativeTimeFormatter.compactLabel(for: $0) },
-                diffTotalsByThreadID: diffTotalsByThreadID,
-                runBadgeStateByThreadID: cachedRunBadges,
-                onSelectThread: selectThread,
-                onCreateThreadInProjectGroup: { group in
-                    handleNewChatTap(preferredProjectPath: group.projectPath)
-                },
-                onArchiveProjectGroup: { group in
-                    projectGroupPendingArchive = group
-                },
-                onRenameThread: { thread, newName in
-                    codex.renameThread(thread.id, name: newName)
-                },
-                onArchiveToggleThread: { thread in
-                    if thread.syncState == .archivedLocal {
-                        codex.unarchiveThread(thread.id)
-                    } else {
-                        codex.archiveThread(thread.id)
-                        if selectedThread?.id == thread.id {
-                            selectedThread = nil
-                        }
-                    }
-                },
-                onDeleteThread: { thread in
-                    threadPendingDeletion = thread
-                }
-            )
-            .refreshable {
-                await refreshThreads()
-            }
-
-            HStack(spacing: 10) {
-                SidebarFloatingSettingsButton(colorScheme: colorScheme, action: openSettings)
-                Spacer(minLength: 0)
-                if let trustedPairPresentation = codex.trustedPairPresentation {
-                    SidebarMacConnectionStatusView(
-                        name: trustedPairPresentation.name,
-                        systemName: trustedPairPresentation.systemName,
-                        isConnected: codex.isConnected
-                    )
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
+            .padding(.trailing, 20)
+            .padding(.bottom, 22)
         }
         .frame(maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color(.secondarySystemBackground))
         .task {
             debugSidebarLog("task start visible=\(isVisible) threadCount=\(codex.threads.count)")
             rebuildGroupedThreads()

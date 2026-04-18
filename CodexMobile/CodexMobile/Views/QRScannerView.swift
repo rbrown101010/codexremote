@@ -10,6 +10,7 @@ import UIKit
 
 struct QRScannerView: View {
     let onBack: (() -> Void)?
+    let onManualCode: (() -> Void)?
     let onScan: (CodexPairingQRPayload) -> Void
 
     @State private var scannerError: String?
@@ -23,9 +24,11 @@ struct QRScannerView: View {
         initialHasCameraPermission: Bool = false,
         initialIsCheckingPermission: Bool = true,
         onBack: (() -> Void)? = nil,
+        onManualCode: (() -> Void)? = nil,
         onScan: @escaping (CodexPairingQRPayload) -> Void
     ) {
         self.onBack = onBack
+        self.onManualCode = onManualCode
         self.onScan = onScan
         _bridgeUpdatePrompt = State(initialValue: initialBridgeUpdatePrompt)
         _hasCameraPermission = State(initialValue: initialHasCameraPermission)
@@ -207,6 +210,8 @@ struct QRScannerView: View {
                 .font(AppFont.subheadline(weight: .medium))
                 .foregroundStyle(.white)
 
+            manualCodeButton
+
             Spacer()
         }
     }
@@ -233,6 +238,26 @@ struct QRScannerView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+
+            manualCodeButton
+        }
+    }
+
+    @ViewBuilder
+    private var manualCodeButton: some View {
+        if let onManualCode {
+            Button("Pair with Code") {
+                onManualCode()
+            }
+            .font(AppFont.subheadline(weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.22), lineWidth: 1)
+            )
+            .buttonStyle(.plain)
         }
     }
 
