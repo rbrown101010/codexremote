@@ -43,11 +43,11 @@ struct CopyBlockButton: View {
 
     // Keeps the compact copy affordance consistent with the rest of the timeline chrome.
     private var copyLabel: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             Group {
                 if showCopiedFeedback {
                     Image(systemName: "checkmark")
-                        .font(AppFont.system(size: 11, weight: .medium))
+                        .font(AppFont.system(size: 14, weight: .semibold))
                 } else {
                     Image("copy")
                         .renderingMode(.template)
@@ -55,18 +55,19 @@ struct CopyBlockButton: View {
                         .scaledToFit()
                 }
             }
-            .frame(width: 15, height: 15)
-            if showCopiedFeedback {
-                Text("Copied")
-                    .font(AppFont.system(size: 11, weight: .medium))
-            }
+            .frame(width: 18, height: 18)
         }
         .foregroundStyle(.secondary)
-        .padding(.vertical, 4)
-        .padding(.horizontal, 6)
-        // Preserve the compact look while giving the copy affordance a reliable 44pt tap target.
-        .frame(minWidth: 44, minHeight: 44, alignment: .leading)
-        .contentShape(Rectangle())
+        .frame(width: 42, height: 42)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                )
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
 }

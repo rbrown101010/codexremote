@@ -321,6 +321,8 @@ final class CodexService {
     var failedThreadIDs: Set<String> = []
     // Threads that started a real run and haven't completed yet; survives sync-poll clearing.
     @ObservationIgnored var threadsPendingCompletionHaptic: Set<String> = []
+    // Dedupes per-message arrival haptics so streaming replies only buzz once.
+    @ObservationIgnored var assistantMessageArrivalHapticsByMessageID: Set<String> = []
     // Keeps the latest terminal outcome per thread so UI can react to real run completion.
     var latestTurnTerminalStateByThread: [String: CodexTurnTerminalState] = [:]
     // Preserves terminal outcome per turn so completed/stopped blocks stay distinguishable.

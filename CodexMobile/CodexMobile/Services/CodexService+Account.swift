@@ -751,14 +751,14 @@ extension CodexService {
         if let currentVersion = currentVersion?.trimmingCharacters(in: .whitespacesAndNewlines),
            !currentVersion.isEmpty {
             message =
-                "This Mac bridge is running Remodex \(currentVersion), but this iPhone app requires Remodex \(CodexService.minimumSupportedBridgePackageVersion) or newer. Update the npm package on your Mac, then reconnect."
+                "This Mac bridge is running version \(currentVersion), but this iPhone app requires bridge version \(CodexService.minimumSupportedBridgePackageVersion) or newer. Update the package on your Mac, then reconnect."
         } else {
             message =
-                "This Mac bridge is too old for this version of Remodex iPhone. Update the Remodex npm package on your Mac to \(CodexService.minimumSupportedBridgePackageVersion) or newer, then reconnect."
+                "This Mac bridge is too old for this version of Harmony on iPhone. Update the bridge package on your Mac to \(CodexService.minimumSupportedBridgePackageVersion) or newer, then reconnect."
         }
 
         return CodexBridgeUpdatePrompt(
-            title: "Update Remodex on your Mac to reconnect",
+            title: "Update the bridge on your Mac to reconnect",
             message: message,
             command: minimumBridgePackageUpdateCommand
         )
@@ -819,16 +819,16 @@ extension CodexService {
         latestVersion: String
     ) -> CodexBridgeUpdatePrompt {
         CodexBridgeUpdatePrompt(
-            title: "A newer Remodex update is available on your Mac",
-            message: "This Mac bridge is running Remodex \(currentVersion), and npm now has Remodex \(latestVersion). Update the package on your Mac when you're ready, then reconnect to start using the newer build.",
+            title: "A newer bridge update is available on your Mac",
+            message: "This Mac bridge is running version \(currentVersion), and npm now has version \(latestVersion). Update the package on your Mac when you're ready, then reconnect to start using the newer build.",
             command: minimumBridgePackageUpdateCommand
         )
     }
 
     private func forcedBridgePackageUpdatePrompt(currentVersion: String) -> CodexBridgeUpdatePrompt {
         CodexBridgeUpdatePrompt(
-            title: "Update Remodex on your Mac to reconnect",
-            message: "This Mac bridge is running Remodex \(currentVersion). Update the Remodex CLI on your Mac to \(forcedBridgeUpgradeTargetVersion), then reconnect.",
+            title: "Update the bridge on your Mac to reconnect",
+            message: "This Mac bridge is running version \(currentVersion). Update the bridge CLI on your Mac to \(forcedBridgeUpgradeTargetVersion), then reconnect.",
             command: forcedBridgeUpgradeCommand
         )
     }

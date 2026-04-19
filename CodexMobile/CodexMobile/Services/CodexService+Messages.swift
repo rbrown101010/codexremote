@@ -2356,6 +2356,8 @@ extension CodexService {
             existingText: currentText,
             incomingDelta: delta
         )
+        let shouldTriggerArrivalHaptic = currentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !nextText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let didResolveItemId = messagesByThread[threadId]?[messageIndex].itemId == nil && itemId != nil
 
         guard nextText != currentText
@@ -2373,6 +2375,9 @@ extension CodexService {
 
         persistMessages()
         updateStreamingAssistantOutput(for: threadId, messageId: messageID, rawMessageIndex: messageIndex)
+        if shouldTriggerArrivalHaptic {
+            triggerAssistantMessageArrivalHapticIfNeeded(threadId: threadId, messageId: messageID)
+        }
     }
 
     // Finalizes assistant text when item/completed carries the canonical message body.
@@ -2385,6 +2390,7 @@ extension CodexService {
         let resolvedTurnId = turnId ?? activeTurnIdByThread[threadId]
         let now = Date()
         var resolvedAssistantMessageId: String?
+        var shouldTriggerArrivalHaptic = false
 
         if resolvedTurnId == nil, itemId == nil,
            let fingerprint = assistantCompletionFingerprintByThread[threadId],
@@ -2418,11 +2424,13 @@ extension CodexService {
                             orderIndex: currentAssistant.orderIndex
                         )
                    ) {
+                    let existingText = messagesByThread[threadId]?[targetIndex].text ?? ""
                     messagesByThread[threadId]?[targetIndex].text = trimmedText
                     messagesByThread[threadId]?[targetIndex].isStreaming = false
                     if messagesByThread[threadId]?[targetIndex].turnId == nil {
                         messagesByThread[threadId]?[targetIndex].turnId = resolvedTurnId
                     }
+                    shouldTriggerArrivalHaptic = existingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     refreshDerivedPlanMetadata(threadId: threadId, messageIndex: targetIndex)
                     resolvedAssistantMessageId = messagesByThread[threadId]?[targetIndex].id
                 }
@@ -2451,6 +2459,7 @@ extension CodexService {
            let messageID = ensureStreamingAssistantMessage(threadId: threadId, turnId: resolvedTurnId, itemId: itemId),
            let messageIndex = findMessageIndex(threadId: threadId, messageId: messageID) {
             let existingText = messagesByThread[threadId]?[messageIndex].text ?? ""
+            shouldTriggerArrivalHaptic = existingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
             if existingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 messagesByThread[threadId]?[messageIndex].text = trimmedText
@@ -2472,11 +2481,13 @@ extension CodexService {
                let existingItemIndex = messagesByThread[threadId]?.lastIndex(where: { candidate in
                    candidate.role == .assistant && candidate.itemId == itemId
                }) {
+                let existingText = messagesByThread[threadId]?[existingItemIndex].text ?? ""
                 messagesByThread[threadId]?[existingItemIndex].text = trimmedText
                 messagesByThread[threadId]?[existingItemIndex].isStreaming = false
                 if messagesByThread[threadId]?[existingItemIndex].turnId == nil {
                     messagesByThread[threadId]?[existingItemIndex].turnId = resolvedTurnId
                 }
+                shouldTriggerArrivalHaptic = existingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 refreshDerivedPlanMetadata(threadId: threadId, messageIndex: existingItemIndex)
                 resolvedAssistantMessageId = messagesByThread[threadId]?[existingItemIndex].id
             } else if let duplicateIndex = messagesByThread[threadId]?.lastIndex(where: { candidate in
@@ -2509,6 +2520,7 @@ extension CodexService {
                     deliveryState: .confirmed
                 )
                 appendMessage(newMessage)
+                shouldTriggerArrivalHaptic = true
                 resolvedAssistantMessageId = newMessage.id
             }
         }
@@ -2522,6 +2534,12 @@ extension CodexService {
                 turnId: resolvedTurnId,
                 assistantMessageId: resolvedAssistantMessageId
             )
+            if shouldTriggerArrivalHaptic {
+                triggerAssistantMessageArrivalHapticIfNeeded(
+                    threadId: threadId,
+                    messageId: resolvedAssistantMessageId
+                )
+            }
         }
         updateCurrentOutput(for: threadId)
     }
@@ -3065,6 +3083,17 @@ extension CodexService {
         }
 
         HapticFeedback.shared.triggerNotificationFeedback(type: .success)
+    }
+
+    // Fires once when the active thread receives visible assistant prose.
+    func triggerAssistantMessageArrivalHapticIfNeeded(threadId: String, messageId: String) {
+        guard isAppInForeground,
+              activeThreadId == threadId,
+              assistantMessageArrivalHapticsByMessageID.insert(messageId).inserted else {
+            return
+        }
+
+        HapticFeedback.shared.triggerAssistantMessageFeedback()
     }
 
     // Late activity notifications can arrive after turn/completed.

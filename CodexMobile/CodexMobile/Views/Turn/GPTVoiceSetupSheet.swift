@@ -23,7 +23,7 @@ struct GPTVoiceSetupSheet: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("GPT voice uses the ChatGPT session on your Mac")
                             .font(AppFont.subheadline(weight: .semibold))
-                        Text("Remodex does not keep a separate GPT voice login on the iPhone. It uses the ChatGPT session already active on your paired Mac.")
+                        Text("Harmony does not keep a separate GPT voice login on the iPhone. It uses the ChatGPT session already active on your paired Mac.")
                             .font(AppFont.caption())
                             .foregroundStyle(.secondary)
                     }
@@ -33,12 +33,12 @@ struct GPTVoiceSetupSheet: View {
                     infoStep(
                         number: "1",
                         title: "You speak on the iPhone",
-                        detail: "Remodex records the voice clip locally on the phone when you hold to talk."
+                        detail: "Harmony records the voice clip locally on the phone when you hold to talk."
                     )
                     infoStep(
                         number: "2",
                         title: "The phone checks your paired Mac",
-                        detail: "Remodex asks the paired Mac bridge for the active ChatGPT session that is already connected there."
+                        detail: "Harmony asks the paired Mac bridge for the active ChatGPT session that is already connected there."
                     )
                     infoStep(
                         number: "3",
@@ -47,7 +47,7 @@ struct GPTVoiceSetupSheet: View {
                     )
                     infoStep(
                         number: "4",
-                        title: "The text comes back to Remodex",
+                        title: "The text comes back to Harmony",
                         detail: "The transcript returns to the app and gets dropped into your message composer."
                     )
                 }

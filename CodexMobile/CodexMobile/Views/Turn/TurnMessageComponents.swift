@@ -700,11 +700,8 @@ struct MessageRow: View, Equatable {
                     if hasTurnEndActions {
                         turnEndActionButtons
                     }
-                    if let assistantBlockAccessoryState {
-                        CopyBlockButton(
-                            text: assistantBlockAccessoryState.copyText,
-                            isRunning: assistantBlockAccessoryState.showsRunningIndicator
-                        )
+                    if showsAssistantAccessoryRow(copyText: assistantBlockAccessoryState?.copyText) {
+                        assistantAccessoryRow(copyText: assistantBlockAccessoryState?.copyText)
                     }
                 }
                 // Keep block-end actions pinned left when a system row is the last item in a turn.
@@ -1027,11 +1024,8 @@ struct MessageRow: View, Equatable {
                 turnEndActionButtons
             }
 
-            if !suppressNativeProposedPlanShell, let assistantBlockAccessoryState {
-                CopyBlockButton(
-                    text: assistantCopyText,
-                    isRunning: assistantBlockAccessoryState.showsRunningIndicator
-                )
+            if !suppressNativeProposedPlanShell && showsAssistantAccessoryRow(copyText: assistantCopyText) {
+                assistantAccessoryRow(copyText: assistantCopyText)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1198,93 +1192,25 @@ struct MessageRow: View, Equatable {
         }
     }
 
-    @Environment(\.inlineCommitAndPushAction) private var inlineCommitAction
-    @Environment(\.inlineCommitAndPushPhase) private var inlineCommitAndPushPhase
+    @Environment(\.inlineGitAction) private var inlineGitAction
+    @Environment(\.inlineGitRunningAction) private var inlineGitRunningAction
     @State private var isShowingBlockDiffSheet = false
 
     private var hasTurnEndActions: Bool {
-        AssistantTurnEndActionVisibility.shouldShow(
-            accessoryState: assistantBlockAccessoryState
-        )
+        guard isAssistantAccessoryReady else {
+            return false
+        }
+        return assistantBlockAccessoryState?.blockRevertPresentation != nil
     }
 
-    private var isInlineCommitAndPushRunning: Bool {
-        inlineCommitAndPushPhase != nil
-    }
-
-    private var inlineCommitAndPushTitle: String {
-        inlineCommitAndPushPhase?.title ?? "Commit & Push"
+    private var isAnyInlineGitActionRunning: Bool {
+        inlineGitRunningAction != nil
     }
 
     @ViewBuilder
     private var turnEndActionButtons: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let revert = assistantBlockAccessoryState?.blockRevertPresentation {
-                assistantRevertButton(presentation: revert)
-            }
-
-            if let accessory = assistantBlockAccessoryState {
-                HStack(spacing: 10) {
-                    if let entries = accessory.blockDiffEntries, !entries.isEmpty {
-                        let totalAdditions = entries.reduce(0) { $0 + $1.additions }
-                        let totalDeletions = entries.reduce(0) { $0 + $1.deletions }
-
-                        Button {
-                            isShowingBlockDiffSheet = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "doc.text.magnifyingglass")
-                                    .font(AppFont.system(size: 10, weight: .medium))
-                                Text("Diff")
-                                DiffCountsLabel(additions: totalAdditions, deletions: totalDeletions)
-                            }
-                            .font(AppFont.mono(.body))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .adaptiveGlass(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .sheet(isPresented: $isShowingBlockDiffSheet) {
-                            TurnDiffSheet(
-                                title: "Changes",
-                                entries: entries,
-                                bodyText: accessory.blockDiffText ?? "",
-                                messageID: message.id
-                            )
-                        }
-                    }
-
-                    if let action = inlineCommitAction {
-                        Button {
-                            HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                            action()
-                        } label: {
-                            HStack(spacing: 4) {
-                                // Mirror the top-bar git feedback so the inline CTA feels responsive too.
-                                Group {
-                                    if isInlineCommitAndPushRunning {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                    } else {
-                                        Image("cloud-upload")
-                                            .renderingMode(.template)
-                                            .resizable()
-                                            .scaledToFit()
-                                    }
-                                }
-                                    .frame(width: 18, height: 18)
-                                Text(inlineCommitAndPushTitle)
-                            }
-                            .font(AppFont.mono(.body))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .adaptiveGlass(.regular, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(isInlineCommitAndPushRunning)
-                    }
-                }
-            }
+        if let revert = assistantBlockAccessoryState?.blockRevertPresentation {
+            assistantRevertButton(presentation: revert)
         }
     }
 
@@ -1330,6 +1256,113 @@ struct MessageRow: View, Equatable {
         .buttonStyle(.plain)
         .disabled(!presentation.isEnabled)
         .accessibilityHint(presentation.warningText ?? presentation.helperText ?? "")
+    }
+
+    private func accessoryIconButton(
+        systemName: String,
+        accessibilityLabel: String,
+        isRunning: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            HapticFeedback.shared.triggerImpactFeedback(style: .light)
+            action()
+        } label: {
+            Group {
+                if isRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: systemName)
+                        .font(AppFont.system(size: 16, weight: .semibold))
+                }
+            }
+            .foregroundStyle(.secondary)
+            .frame(width: 42, height: 42)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(.secondarySystemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func showsAssistantAccessoryRow(copyText: String?) -> Bool {
+        guard isAssistantAccessoryReady, let accessory = assistantBlockAccessoryState else {
+            return false
+        }
+
+        if copyText != nil {
+            return true
+        }
+
+        if let entries = accessory.blockDiffEntries, !entries.isEmpty {
+            return true
+        }
+
+        return inlineGitAction != nil
+    }
+
+    private var isAssistantAccessoryReady: Bool {
+        guard let accessory = assistantBlockAccessoryState else {
+            return false
+        }
+
+        return !message.isStreaming && !accessory.showsRunningIndicator
+    }
+
+    @ViewBuilder
+    private func assistantAccessoryRow(copyText: String?) -> some View {
+        if let accessory = assistantBlockAccessoryState {
+            HStack(spacing: 10) {
+                if let entries = accessory.blockDiffEntries, !entries.isEmpty {
+                    accessoryIconButton(
+                        systemName: "doc.text.magnifyingglass",
+                        accessibilityLabel: "Show diff"
+                    ) {
+                        isShowingBlockDiffSheet = true
+                    }
+                    .sheet(isPresented: $isShowingBlockDiffSheet) {
+                        TurnDiffSheet(
+                            title: "Changes",
+                            entries: entries,
+                            bodyText: accessory.blockDiffText ?? "",
+                            messageID: message.id
+                        )
+                    }
+                }
+
+                if let action = inlineGitAction {
+                    accessoryIconButton(
+                        systemName: "checkmark",
+                        accessibilityLabel: "Commit changes",
+                        isRunning: inlineGitRunningAction == .commit
+                    ) {
+                        action(.commit)
+                    }
+                    .disabled(isAnyInlineGitActionRunning)
+
+                    accessoryIconButton(
+                        systemName: "arrow.up",
+                        accessibilityLabel: "Push changes",
+                        isRunning: inlineGitRunningAction == .push
+                    ) {
+                        action(.push)
+                    }
+                    .disabled(isAnyInlineGitActionRunning)
+                }
+
+                CopyBlockButton(
+                    text: copyText,
+                    isRunning: accessory.showsRunningIndicator
+                )
+            }
+        }
     }
 
     @ViewBuilder
@@ -1867,12 +1900,10 @@ struct ToolCallSystemBlockPreviewHost: View {
 }
 
 enum AssistantTurnEndActionVisibility {
-    // Ties Diff/Revert to the block's own streaming state so interrupted and
-    // turn-less recovered rows keep their end-of-turn controls once settled.
+    // Keeps only revert-style recovery controls in the dedicated action stack.
     static func shouldShow(accessoryState: AssistantBlockAccessoryState?) -> Bool {
         guard let accessoryState, !accessoryState.showsRunningIndicator else { return false }
         return accessoryState.blockRevertPresentation != nil
-            || accessoryState.blockDiffEntries != nil
     }
 }
 

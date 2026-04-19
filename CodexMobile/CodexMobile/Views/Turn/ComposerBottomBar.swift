@@ -68,7 +68,7 @@ struct ComposerBottomBar: View {
     private let reasoningSymbolIsAsset = true
     private var metaChevronFont: Font { AppFont.system(size: 9, weight: .regular) }
     private let metaVerticalPadding: CGFloat = 6
-    private let plusTapTargetSide: CGFloat = 22
+    private let plusTapTargetSide: CGFloat = 36
 
     private var sendButtonIconColor: Color {
         if isSendDisabled { return Color(.systemGray2) }
@@ -98,9 +98,9 @@ struct ComposerBottomBar: View {
                     onResumeQueue()
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .font(AppFont.system(size: 12, weight: .bold))
+                        .font(AppFont.system(size: 14, weight: .bold))
                         .foregroundStyle(Color(.systemBackground))
-                        .frame(width: 28, height: 28)
+                        .frame(width: 36, height: 36)
                         .background(Color(.systemGray2), in: Circle())
                 }
                 .accessibilityLabel("Resume queued messages")
@@ -112,9 +112,9 @@ struct ComposerBottomBar: View {
                     onStopTurn(activeTurnID)
                 } label: {
                     Image(systemName: "stop.fill")
-                        .font(AppFont.system(size: 12, weight: .bold))
+                        .font(AppFont.system(size: 15, weight: .bold))
                         .foregroundStyle(Color(.systemBackground))
-                        .frame(width: 32, height: 32)
+                        .frame(width: 42, height: 42)
                         .background(Color(.label), in: Circle())
                 }
                 .accessibilityLabel("Stop response")
@@ -149,19 +149,19 @@ struct ComposerBottomBar: View {
             if isSendDisabled && voiceButtonPresentation.showsProgress {
                 ProgressView()
                     .tint(voiceButtonPresentation.foregroundColor)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 42, height: 42)
                     .background(voiceButtonPresentation.backgroundColor, in: Circle())
             } else if isSendDisabled {
                 Image(systemName: voiceButtonPresentation.systemImageName)
-                    .font(AppFont.system(size: 12, weight: .bold))
+                    .font(AppFont.system(size: 16, weight: .bold))
                     .foregroundStyle(voiceButtonPresentation.foregroundColor)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 42, height: 42)
                     .background(voiceButtonPresentation.backgroundColor, in: Circle())
             } else {
                 Image(systemName: "arrow.up")
-                    .font(AppFont.system(size: 12, weight: .bold))
+                    .font(AppFont.system(size: 16, weight: .bold))
                     .foregroundStyle(sendButtonIconColor)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 42, height: 42)
                     .background(sendButtonBackgroundColor, in: Circle())
             }
         }
@@ -206,10 +206,9 @@ struct ComposerBottomBar: View {
             usageMenuContent
         } label: {
             Image(systemName: "plus")
-                .font(metaTextFont)
-                .fontWeight(.regular)
+                .font(AppFont.system(size: 20, weight: .semibold))
                 .frame(width: plusTapTargetSide, height: plusTapTargetSide)
-                .contentShape(Capsule())
+                .contentShape(Circle())
         }
         .tint(metaLabelColor)
         .disabled(isComposerInteractionLocked)

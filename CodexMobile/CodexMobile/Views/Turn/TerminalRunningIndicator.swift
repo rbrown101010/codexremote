@@ -6,17 +6,39 @@
 import SwiftUI
 
 struct TerminalRunningIndicator: View {
+    private static let spinnerVerbs: [String] = [
+        "Accomplishing", "Actioning", "Actualizing", "Architecting", "Baking", "Beaming",
+        "Bootstrapping", "Brewing", "Burrowing", "Calculating", "Cerebrating", "Channeling",
+        "Choreographing", "Clauding", "Coalescing", "Cogitating", "Composing", "Computing",
+        "Concocting", "Considering", "Contemplating", "Crafting", "Creating", "Crunching",
+        "Crystallizing", "Cultivating", "Deciphering", "Deliberating", "Determining",
+        "Discombobulating", "Elucidating", "Embellishing", "Enchanting", "Envisioning",
+        "Fermenting", "Finagling", "Flowing", "Forging", "Forming", "Generating",
+        "Gitifying", "Harmonizing", "Hashing", "Hatching", "Hullaballooing", "Hyperspacing",
+        "Ideating", "Imagining", "Improvising", "Incubating", "Inferring", "Manifesting",
+        "Marinating", "Metamorphosing", "Mulling", "Musing", "Nebulizing", "Noodling",
+        "Orbiting", "Orchestrating", "Percolating", "Perusing", "Pondering", "Pontificating",
+        "Processing", "Puzzling", "Razzmatazzing", "Recombobulating", "Ruminating",
+        "Scampering", "Seasoning", "Shenaniganing", "Simmering", "Skedaddling", "Sketching",
+        "Smooshing", "Spelunking", "Spinning", "Stewing", "Swirling", "Synthesizing",
+        "Tempering", "Thinking", "Tinkering", "Transfiguring", "Transmuting", "Unfurling",
+        "Unravelling", "Vibing", "Wandering", "Warping", "Whirring", "Whisking", "Working",
+        "Wrangling", "Zesting", "Zigzagging"
+    ]
+
     @State private var cursorOpacity: Double = 1
+    @State private var currentVerb = TerminalRunningIndicator.spinnerVerbs.randomElement() ?? "Thinking"
+    @State private var verbRotationTask: Task<Void, Never>?
 
     var body: some View {
         HStack(spacing: 6) {
             glyph
-            Text("Remodex is thinking...")
+            Text("\(currentVerb)...")
                 .font(AppFont.caption())
                 .foregroundStyle(.secondary)
                 .overlay { ShimmerLabelMask() }
                 .mask(
-                    Text("Remodex is thinking...")
+                    Text("\(currentVerb)...")
                         .font(AppFont.caption())
                 )
         }
@@ -24,8 +46,13 @@ struct TerminalRunningIndicator: View {
             withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
                 cursorOpacity = 0.18
             }
+            startVerbRotationIfNeeded()
         }
-        .accessibilityLabel("Remodex is thinking")
+        .onDisappear {
+            verbRotationTask?.cancel()
+            verbRotationTask = nil
+        }
+        .accessibilityLabel("Assistant is responding")
     }
 
     private var glyph: some View {
@@ -53,6 +80,34 @@ struct TerminalRunningIndicator: View {
                        )
                )
                .contentShape(Circle())
+    }
+
+    private func startVerbRotationIfNeeded() {
+        guard verbRotationTask == nil else {
+            return
+        }
+
+        verbRotationTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_600_000_000)
+                guard !Task.isCancelled else {
+                    return
+                }
+                currentVerb = nextVerb(after: currentVerb)
+            }
+        }
+    }
+
+    private func nextVerb(after verb: String) -> String {
+        guard Self.spinnerVerbs.count > 1 else {
+            return verb
+        }
+
+        var next = verb
+        while next == verb {
+            next = Self.spinnerVerbs.randomElement() ?? verb
+        }
+        return next
     }
 }
 

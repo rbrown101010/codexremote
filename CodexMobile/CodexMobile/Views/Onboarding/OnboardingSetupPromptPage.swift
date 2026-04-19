@@ -1,5 +1,5 @@
 // FILE: OnboardingSetupPromptPage.swift
-// Purpose: Single Codex prompt page for installing and starting Chorus Remote pairing.
+// Purpose: Single Codex prompt page for installing and starting Harmony pairing.
 // Layer: View
 // Exports: OnboardingSetupPromptPage
 // Depends on: SwiftUI, AppFont
@@ -10,7 +10,7 @@ struct OnboardingSetupPromptPage: View {
     @State private var copied = false
 
     private let setupPrompt = """
-    Set up Chorus Remote on this Mac.
+    Set up Harmony on this Mac.
 
     Run:
 
@@ -18,7 +18,10 @@ struct OnboardingSetupPromptPage: View {
     npm install -g remodex@latest
     remodex up
 
-    When Remodex prints a QR code or pairing code, show it in a local browser page so I can scan it from my iPhone.
+    When the bridge prints a QR code or pairing code, show it in a local browser page so I can scan it from my iPhone.
+    Make it a plain white page with this qr code.
+
+    Above the qr code should read "Scan this to control codex"
     """
 
     var body: some View {

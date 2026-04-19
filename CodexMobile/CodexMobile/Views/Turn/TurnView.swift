@@ -7,13 +7,13 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import WebKit
 
 struct TurnView: View {
     let thread: CodexThread
     let isWakingMacDisplayRecovery: Bool
 
     @Environment(CodexService.self) private var codex
-    @Environment(SubscriptionService.self) private var subscriptions
     @Environment(\.openURL) private var openURL
     @Environment(\.reconnectAction) private var reconnectAction
     @Environment(\.wakeMacDisplayAction) private var wakeMacDisplayAction
@@ -44,6 +44,7 @@ struct TurnView: View {
     @State private var hasTriggeredVoiceAutoStop = false
     @State private var voiceRecoveryReason: CodexVoiceFailureReason?
     @State private var isShowingVoiceSetupSheet = false
+    @State private var externalBrowserPresentation: ExternalBrowserPresentation?
     @StateObject private var voiceTranscriptionManager = GPTVoiceTranscriptionManager()
 
     // ─── ENTRY POINT ─────────────────────────────────────────────
@@ -106,7 +107,7 @@ struct TurnView: View {
                 planSessionSource: planSessionSource,
                 allowsAssistantPlanFallbackRecovery: planSessionSource == .compatibilityFallback,
                 threadMessagesForPlanMatching: renderSnapshot.planMatchingMessages,
-                errorMessage: codex.lastErrorMessage,
+                errorMessage: nil,
                 composerRecoveryAccessory: composerRecoveryAccessory,
                 shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponseBinding,
                 isScrolledToBottom: isScrolledToBottomBinding,
@@ -144,6 +145,7 @@ struct TurnView: View {
                     viewModel.clearComposerAutocomplete()
                 }
             )
+        .environment(\.openURL, conversationOpenURLAction)
         .environment(\.inlineCommitAndPushAction, showsGitControls ? {
             viewModel.inlineCommitAndPush(
                 codex: codex,
@@ -151,6 +153,16 @@ struct TurnView: View {
                 threadID: thread.id
             )
         } as (() -> Void)? : nil)
+        .environment(\.inlineGitAction, showsGitControls ? { action in
+            viewModel.triggerGitAction(
+                action,
+                codex: codex,
+                workingDirectory: gitWorkingDirectory,
+                threadID: thread.id,
+                activeTurnID: activeTurnID
+            )
+        } as ((TurnGitActionKind) -> Void)? : nil)
+        .environment(\.inlineGitRunningAction, viewModel.runningGitAction)
         .environment(\.inlineCommitAndPushPhase, viewModel.inlineCommitAndPushPhase)
         .navigationTitle(resolvedThread.displayTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -158,6 +170,11 @@ struct TurnView: View {
             TurnToolbarContent(
                 displayTitle: resolvedThread.displayTitle,
                 navigationContext: toolbarNavigationContext,
+                showsSettingsAttention: showsToolbarSettingsAttention,
+                settingsStatusText: toolbarSettingsStatusText,
+                canReconnectToMac: codex.hasReconnectCandidate && !codex.isConnected,
+                isReconnectingToMac: codex.isConnecting || isRetryingConnectionRecovery,
+                canWakeMacScreen: shouldOfferWakeSavedMacDisplayAction,
                 showsThreadActions: codex.isConnected,
                 isHandingOffToMac: isHandingOffToMac,
                 isStartingNewChat: isStartingSiblingChat,
@@ -176,6 +193,8 @@ struct TurnView: View {
                 onTapWorktreeHandoff: onTapWorktreeHandoff,
                 onTapNewChat: onTapNewChat,
                 onTapRepoDiff: onTapRepoDiff,
+                onTapReconnectToMac: reconnectAction,
+                onTapWakeMacScreen: wakeMacDisplayAction,
                 onGitAction: { action in
                     handleGitActionSelection(
                         action,
@@ -356,6 +375,9 @@ struct TurnView: View {
         .sheet(isPresented: $isShowingVoiceSetupSheet) {
             GPTVoiceSetupSheet()
         }
+        .fullScreenCover(item: $externalBrowserPresentation) { presentation in
+            TurnExternalBrowserSheet(url: presentation.url)
+        }
         .sheet(item: $repositoryDiffPresentation) { presentation in
             TurnDiffSheet(
                 title: presentation.title,
@@ -445,16 +467,7 @@ struct TurnView: View {
                 }
             )
         }
-
-        guard let snapshot = connectionRecoverySnapshot else {
-            return nil
-        }
-
-        return AnyView(
-            ConnectionRecoveryCard(snapshot: snapshot) {
-                handleConnectionRecoveryAction()
-            }
-        )
+        return nil
     }
 
     private var voiceRecoveryPresentation: VoiceRecoveryPresentation? {
@@ -499,6 +512,48 @@ struct TurnView: View {
         return false
     }
 
+    private var showsToolbarSettingsAttention: Bool {
+        if let error = codex.lastErrorMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !error.isEmpty {
+            return true
+        }
+
+        if shouldOfferWakeSavedMacDisplayAction || isWakingMacDisplayRecovery {
+            return true
+        }
+
+        if isRetryingConnectionRecovery || codex.isConnecting || codex.shouldAutoReconnectOnForeground {
+            return true
+        }
+
+        return codex.hasReconnectCandidate && !codex.isConnected
+    }
+
+    private var toolbarSettingsStatusText: String? {
+        if let error = codex.lastErrorMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !error.isEmpty {
+            return error
+        }
+
+        if isWakingMacDisplayRecovery {
+            return "Trying to wake your Mac display."
+        }
+
+        if shouldOfferWakeSavedMacDisplayAction {
+            return "Wake your Mac screen to keep this chat in sync."
+        }
+
+        if isRetryingConnectionRecovery || codex.isConnecting || codex.shouldAutoReconnectOnForeground {
+            return "Trying to reconnect to your Mac."
+        }
+
+        if codex.hasReconnectCandidate && !codex.isConnected {
+            return "Reconnect to your Mac to keep this chat in sync."
+        }
+
+        return nil
+    }
+
     // MARK: - Bindings
 
     private var shouldAnchorToAssistantResponseBinding: Binding<Bool> {
@@ -508,11 +563,27 @@ struct TurnView: View {
         )
     }
 
+    private var conversationOpenURLAction: OpenURLAction {
+        OpenURLAction { url in
+            handleConversationOpenURL(url)
+        }
+    }
+
     private var isScrolledToBottomBinding: Binding<Bool> {
         Binding(
             get: { viewModel.isScrolledToBottom },
             set: { viewModel.isScrolledToBottom = $0 }
         )
+    }
+
+    private func handleConversationOpenURL(_ url: URL) -> OpenURLAction.Result {
+        guard ExternalBrowserLinkRouter.shouldPresentInAppBrowser(for: url) else {
+            return .systemAction
+        }
+
+        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+        externalBrowserPresentation = ExternalBrowserPresentation(url: url)
+        return .handled
     }
 
     // Fetches the repo-wide local patch on demand so the toolbar pill opens the same diff UI as turn changes.
@@ -640,7 +711,7 @@ struct TurnView: View {
     private func handleSend() {
         isInputFocused = false
         viewModel.clearComposerAutocomplete()
-        viewModel.sendTurn(codex: codex, subscriptions: subscriptions, threadID: thread.id)
+        viewModel.sendTurn(codex: codex, threadID: thread.id)
     }
 
     @ViewBuilder
@@ -1534,7 +1605,7 @@ struct TurnView: View {
                 snapshot: ConnectionRecoverySnapshot(
                     title: "Voice Mode",
                     summary: "Reconnect to your Mac to use voice mode.",
-                    detail: "Keep the Remodex bridge running on your Mac, then try the microphone again.",
+                    detail: "Keep the bridge running on your Mac, then try the microphone again.",
                     status: .interrupted,
                     trailingStyle: .action("Reconnect")
                 ),
@@ -1545,7 +1616,7 @@ struct TurnView: View {
                 snapshot: ConnectionRecoverySnapshot(
                     title: "Voice Mode",
                     summary: "This bridge session does not support voice mode yet.",
-                    detail: "Restart Remodex on your Mac, then reconnect this iPhone. If it still happens, update Remodex on your Mac and pair again.",
+                    detail: "Restart the bridge on your Mac, then reconnect this iPhone. If it still happens, update the bridge on your Mac and pair again.",
                     status: .actionRequired,
                     trailingStyle: .action("Reconnect")
                 ),
@@ -1599,8 +1670,8 @@ struct TurnView: View {
             return VoiceRecoveryPresentation(
                 snapshot: ConnectionRecoverySnapshot(
                     title: "Voice Mode",
-                    summary: "Microphone access is off for Remodex.",
-                    detail: "Open iPhone Settings, allow Microphone for Remodex, then try recording again.",
+                    summary: "Microphone access is off for Harmony.",
+                    detail: "Open iPhone Settings, allow Microphone for Harmony, then try recording again.",
                     status: .actionRequired,
                     trailingStyle: .action("Open Settings")
                 ),
@@ -1621,7 +1692,7 @@ struct TurnView: View {
             return VoiceRecoveryPresentation(
                 snapshot: ConnectionRecoverySnapshot(
                     title: "Voice Mode",
-                    summary: "Remodex could not start the recorder.",
+                    summary: "Harmony could not start the recorder.",
                     detail: "Close other audio-heavy apps, then try voice mode again.",
                     status: .actionRequired,
                     trailingStyle: .none
@@ -1730,7 +1801,7 @@ struct TurnView: View {
     private func chatPlaceholderState(title: String, subtitle: String) -> some View {
         VStack(spacing: 12) {
             Spacer()
-            Text("Chorus Remote")
+            Text("Harmony")
                 .font(AppFont.title2(weight: .semibold))
             Text(title)
                 .font(AppFont.title2(weight: .semibold))
@@ -1756,6 +1827,335 @@ private enum VoiceRecoveryAction: Equatable {
 private struct VoiceRecoveryPresentation: Equatable {
     let snapshot: ConnectionRecoverySnapshot
     let action: VoiceRecoveryAction
+}
+
+private struct ExternalBrowserPresentation: Identifiable, Equatable {
+    let url: URL
+
+    var id: String {
+        url.absoluteString
+    }
+}
+
+private enum ExternalBrowserLinkRouter {
+    static func shouldPresentInAppBrowser(for url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host?.lowercased(),
+              !host.isEmpty else {
+            return false
+        }
+
+        return !isLocalHost(host)
+    }
+
+    private static func isLocalHost(_ host: String) -> Bool {
+        if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+            return true
+        }
+
+        if host.hasSuffix(".local") {
+            return true
+        }
+
+        let octets = host.split(separator: ".")
+        if octets.count == 4,
+           let first = Int(octets[0]),
+           let second = Int(octets[1]) {
+            if first == 10 || first == 127 {
+                return true
+            }
+
+            if first == 192 && second == 168 {
+                return true
+            }
+
+            if first == 172 && (16...31).contains(second) {
+                return true
+            }
+        }
+
+        return false
+    }
+}
+
+private struct TurnExternalBrowserSheet: View {
+    let url: URL
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var pageState = BrowserPageState()
+    @State private var browserController = BrowserWebViewController()
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .top) {
+                Color.black.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    browserChrome(topInset: geometry.safeAreaInsets.top)
+
+                    BrowserWebView(
+                        url: url,
+                        controller: browserController,
+                        pageState: $pageState
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white)
+                }
+                .ignoresSafeArea(edges: [.top, .bottom])
+            }
+        }
+        .onAppear {
+            browserController.loadIfNeeded(url)
+        }
+    }
+
+    private func browserChrome(topInset: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            Color.clear
+                .frame(height: topInset)
+
+            HStack(spacing: 12) {
+                browserIconButton(
+                    systemName: "chevron.backward",
+                    accessibilityLabel: pageState.canGoBack ? "Go back" : "Close browser"
+                ) {
+                    if pageState.canGoBack {
+                        browserController.goBack()
+                    } else {
+                        dismiss()
+                    }
+                }
+
+                Text(browserLocationText)
+                    .font(AppFont.caption(weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 14)
+                    .frame(height: 42)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.12))
+                    )
+
+                browserIconButton(
+                    systemName: "safari",
+                    accessibilityLabel: "Open in Safari"
+                ) {
+                    UIApplication.shared.open(pageState.currentURL ?? url)
+                }
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .padding(.bottom, 8)
+
+            if pageState.isLoading {
+                ProgressView(value: pageState.estimatedProgress)
+                    .progressViewStyle(.linear)
+                    .tint(.white.opacity(0.9))
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+            }
+        }
+        .background(Color.black)
+    }
+
+    private var browserLocationText: String {
+        Self.formatBrowserLocation(pageState.currentURL ?? url)
+    }
+
+    private static func formatBrowserLocation(_ url: URL) -> String {
+        guard let host = url.host, !host.isEmpty else {
+            return url.absoluteString
+        }
+
+        let normalizedHost = host.replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
+        let path = url.path == "/" ? "" : url.path
+        let query = (url.query?.isEmpty == false) ? "?\(url.query!)" : ""
+        return "\(normalizedHost)\(path)\(query)"
+    }
+
+    private func browserIconButton(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            HapticFeedback.shared.triggerImpactFeedback(style: .light)
+            action()
+        } label: {
+            Image(systemName: systemName)
+                .font(AppFont.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .adaptiveGlass(.regular, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+private struct BrowserPageState: Equatable {
+    var estimatedProgress: Double = 0
+    var isLoading = true
+    var canGoBack = false
+    var currentURL: URL?
+}
+
+private final class BrowserWebViewController {
+    fileprivate let webView: WKWebView
+    private var loadedURL: URL?
+
+    init() {
+        let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.allowsInlineMediaPlayback = true
+        self.webView = WKWebView(frame: .zero, configuration: configuration)
+        self.webView.scrollView.contentInsetAdjustmentBehavior = .never
+        self.webView.allowsBackForwardNavigationGestures = true
+        self.webView.backgroundColor = .white
+        self.webView.isOpaque = false
+    }
+
+    func loadIfNeeded(_ url: URL) {
+        guard loadedURL != url else { return }
+        loadedURL = url
+        webView.load(URLRequest(url: url))
+    }
+
+    func goBack() {
+        guard webView.canGoBack else { return }
+        webView.goBack()
+    }
+}
+
+private struct BrowserWebView: UIViewRepresentable {
+    let url: URL
+    let controller: BrowserWebViewController
+    @Binding var pageState: BrowserPageState
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(pageState: $pageState)
+    }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = controller.webView
+        webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
+        context.coordinator.attach(to: webView)
+        controller.loadIfNeeded(url)
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        if webView.navigationDelegate !== context.coordinator {
+            webView.navigationDelegate = context.coordinator
+        }
+        if webView.uiDelegate !== context.coordinator {
+            webView.uiDelegate = context.coordinator
+        }
+        context.coordinator.attach(to: webView)
+        controller.loadIfNeeded(url)
+    }
+
+    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.detach(from: webView)
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+        @Binding private var pageState: BrowserPageState
+        private weak var observedWebView: WKWebView?
+
+        init(pageState: Binding<BrowserPageState>) {
+            self._pageState = pageState
+        }
+
+        func attach(to webView: WKWebView) {
+            guard observedWebView !== webView else { return }
+            detachCurrentWebView()
+            webView.addObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), options: [.new], context: nil)
+            observedWebView = webView
+            updateProgress(for: webView)
+        }
+
+        func detach(from webView: WKWebView) {
+            guard observedWebView === webView else { return }
+            detachCurrentWebView()
+        }
+
+        deinit {
+            detachCurrentWebView()
+        }
+
+        override func observeValue(
+            forKeyPath keyPath: String?,
+            of object: Any?,
+            change: [NSKeyValueChangeKey : Any]?,
+            context: UnsafeMutableRawPointer?
+        ) {
+            guard keyPath == #keyPath(WKWebView.estimatedProgress),
+                  let webView = object as? WKWebView else {
+                return
+            }
+
+            updateProgress(for: webView)
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            pageState.isLoading = true
+            updateProgress(for: webView)
+        }
+
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            updateProgress(for: webView)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            pageState.estimatedProgress = 1
+            pageState.isLoading = false
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            pageState.isLoading = false
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            pageState.isLoading = false
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            if navigationAction.targetFrame == nil, let targetURL = navigationAction.request.url {
+                webView.load(URLRequest(url: targetURL))
+            }
+            return nil
+        }
+
+        private func detachCurrentWebView() {
+            guard let observedWebView else { return }
+            observedWebView.removeObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress))
+            self.observedWebView = nil
+        }
+
+        private func updateProgress(for webView: WKWebView) {
+            let progress = min(max(webView.estimatedProgress, 0), 1)
+            pageState.estimatedProgress = progress
+            pageState.isLoading = webView.isLoading || progress < 1
+            pageState.canGoBack = webView.canGoBack
+            pageState.currentURL = webView.url
+        }
+    }
 }
 
 private struct SubagentParentAccessoryCard: View {

@@ -14,6 +14,11 @@ struct TurnThreadNavigationContext {
 struct TurnToolbarContent: ToolbarContent {
     let displayTitle: String
     let navigationContext: TurnThreadNavigationContext?
+    let showsSettingsAttention: Bool
+    let settingsStatusText: String?
+    let canReconnectToMac: Bool
+    let isReconnectingToMac: Bool
+    let canWakeMacScreen: Bool
     let showsThreadActions: Bool
     let isHandingOffToMac: Bool
     let isStartingNewChat: Bool
@@ -32,6 +37,8 @@ struct TurnToolbarContent: ToolbarContent {
     var onTapWorktreeHandoff: (() -> Void)?
     var onTapNewChat: (() -> Void)?
     var onTapRepoDiff: (() -> Void)?
+    var onTapReconnectToMac: (() -> Void)?
+    var onTapWakeMacScreen: (() -> Void)?
     let onGitAction: (TurnGitActionKind) -> Void
 
     @Binding var isShowingPathSheet: Bool
@@ -46,7 +53,7 @@ struct TurnToolbarContent: ToolbarContent {
             && !isCreatingGitWorktree
             && !isThreadActionLoading
         let canTapNewChat = onTapNewChat != nil && !isThreadActionLoading
-        let hasAnyTrailingAction = showsThreadActions || repoDiffTotals != nil || showsGitActions
+        let hasAnyTrailingAction = true
 
         ToolbarItem(placement: .principal) {
             VStack(alignment: .leading, spacing: 1) {
@@ -82,6 +89,45 @@ struct TurnToolbarContent: ToolbarContent {
         if hasAnyTrailingAction {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Section("Settings") {
+                        if let settingsStatusText, showsSettingsAttention {
+                            TurnToolbarMenuInfoRow(
+                                text: settingsStatusText,
+                                tint: .red
+                            )
+                        }
+
+                        if canReconnectToMac {
+                            Button {
+                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                                onTapReconnectToMac?()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    ResizableThreadActionSymbol(systemName: "arrow.clockwise", pointSize: 13)
+                                    Text(isReconnectingToMac ? "Reconnecting..." : "Reconnect to Mac")
+                                }
+                            }
+                            .disabled(isReconnectingToMac || onTapReconnectToMac == nil)
+                        }
+
+                        if canWakeMacScreen {
+                            Button {
+                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                                onTapWakeMacScreen?()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    ResizableThreadActionSymbol(systemName: "display", pointSize: 13)
+                                    Text("Wake Mac Screen")
+                                }
+                            }
+                            .disabled(onTapWakeMacScreen == nil)
+                        }
+
+                        NavigationLink(value: "settings") {
+                            Label("Open Settings", systemImage: "gearshape")
+                        }
+                    }
+
                     if showsThreadActions {
                         Section("Chat") {
                             Button {
@@ -153,7 +199,10 @@ struct TurnToolbarContent: ToolbarContent {
                         }
                     }
                 } label: {
-                    TurnToolbarCombinedActionsLabel(isLoading: isThreadActionLoading || isRunningGitAction)
+                    TurnToolbarCombinedActionsLabel(
+                        isLoading: isThreadActionLoading || isRunningGitAction,
+                        showsAttention: showsSettingsAttention
+                    )
                 }
                 .accessibilityLabel("Chat actions")
             }
@@ -177,6 +226,7 @@ struct TurnToolbarContent: ToolbarContent {
 
 private struct TurnToolbarCombinedActionsLabel: View {
     let isLoading: Bool
+    let showsAttention: Bool
 
     var body: some View {
         Group {
@@ -186,12 +236,34 @@ private struct TurnToolbarCombinedActionsLabel: View {
                     .frame(width: 24, height: 24)
             } else {
                 ResizableThreadActionSymbol(systemName: "ellipsis", pointSize: 17)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(showsAttention ? .red : .primary)
                     .frame(width: 24, height: 24)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if showsAttention {
+                Circle()
+                    .fill(.red)
+                    .frame(width: 8, height: 8)
+                    .offset(x: 2, y: -2)
             }
         }
         .contentShape(Circle())
         .adaptiveToolbarItem(in: Circle())
+    }
+}
+
+private struct TurnToolbarMenuInfoRow: View {
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundStyle(tint)
+        }
     }
 }
 

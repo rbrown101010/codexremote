@@ -5,6 +5,11 @@
 
 import SwiftUI
 
+private enum SidebarThreadRowLayout {
+    // Matches the project header text start after its chevron slot.
+    static let projectLabelAlignmentInset: CGFloat = 14
+}
+
 struct SidebarThreadRowView: View {
     let thread: CodexThread
     let isSelected: Bool
@@ -72,7 +77,8 @@ struct SidebarThreadRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 12)
+        .padding(.leading, 12 + SidebarThreadRowLayout.projectLabelAlignmentInset)
+        .padding(.trailing, 12)
         .padding(.vertical, 12)
     }
 
@@ -119,7 +125,8 @@ struct SidebarThreadRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, 12)
+        .padding(.leading, 12 + SidebarThreadRowLayout.projectLabelAlignmentInset)
+        .padding(.trailing, 12)
         .padding(.vertical, 4)
     }
 

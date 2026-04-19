@@ -12,7 +12,7 @@ struct SidebarHeaderView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text("Chorus Remote")
+            Text("Harmony")
                 .font(AppFont.title3(weight: .semibold))
                 .padding(.leading, 8)
 
@@ -33,7 +33,7 @@ struct SidebarHeaderView: View {
                 // Mirrors the top-bar menu affordance so full-width sidebar presentations still
                 // have an obvious close target after the content shifts completely offscreen.
                 Button(action: onClose) {
-                    TwoLineHamburgerIcon()
+                    DrawerToggleIcon(edge: .trailing)
                         .foregroundStyle(.primary)
                         .frame(width: 44, height: 44)
                         .adaptiveGlass(.regular, in: Circle())

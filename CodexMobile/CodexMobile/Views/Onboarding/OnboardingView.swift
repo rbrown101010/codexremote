@@ -57,8 +57,6 @@ struct OnboardingView: View {
 
             // CTA button
             actionButton
-
-            OpenSourceBadge(style: .dark)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
@@ -113,6 +111,7 @@ struct OnboardingView: View {
     }
 
     private func handleContinue() {
+        HapticFeedback.shared.triggerImpactFeedback(style: .light)
         if currentPage < Self.pageCount - 1 {
             advanceToNextPage()
         } else {

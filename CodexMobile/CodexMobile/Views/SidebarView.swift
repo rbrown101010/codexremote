@@ -242,6 +242,7 @@ struct SidebarView: View {
                     preferredProjectPath: preferredProjectPath,
                     codex: codex
                 )
+                HapticFeedback.shared.triggerThreadOpenedFeedback()
                 onOpenThread(thread)
             } catch {
                 let message = error.localizedDescription

@@ -8,8 +8,9 @@ import UIKit
 
 struct SettingsView: View {
     @Environment(CodexService.self) private var codex
-    @Environment(SubscriptionService.self) private var subscriptions
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.reconnectAction) private var reconnectAction
+    @Environment(\.wakeMacDisplayAction) private var wakeMacDisplayAction
 
     @AppStorage("codex.appFontStyle") private var appFontStyleRawValue = AppFont.defaultStoredStyleRawValue
     @AppStorage("codex.hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -29,7 +30,6 @@ struct SettingsView: View {
                 SettingsAppearanceCard(appFontStyle: appFontStyleBinding)
                 SettingsNotificationsCard()
                 SettingsGPTAccountCard()
-                SettingsSubscriptionCard()
                 SettingsBridgeVersionCard()
                 runtimeDefaultsSection
                 SettingsAboutCard()
@@ -50,12 +50,6 @@ struct SettingsView: View {
                     systemName: trustedPairPresentation.systemName ?? trustedPairPresentation.name
                 )
             }
-        }
-        .task {
-            guard subscriptions.bootstrapState == .idle else {
-                return
-            }
-            await subscriptions.bootstrap()
         }
     }
 
@@ -182,6 +176,23 @@ struct SettingsView: View {
             }
 
             Divider()
+
+            if codex.hasReconnectCandidate && !codex.isConnected {
+                SettingsButton(
+                    connectionPhaseShowsProgress ? "Reconnecting..." : "Reconnect to Mac",
+                    isLoading: connectionPhaseShowsProgress
+                ) {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    reconnectAction?()
+                }
+            }
+
+            if codex.canWakePreferredMacDisplay {
+                SettingsButton("Wake Mac Screen") {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    wakeMacDisplayAction?()
+                }
+            }
 
             Toggle("Keep Mac reachable", isOn: keepMacAwakeWhileBridgeRunsBinding)
                 .tint(settingsAccentColor)
@@ -310,42 +321,6 @@ struct SettingsView: View {
     }
 }
 
-private struct SettingsSubscriptionCard: View {
-    @Environment(SubscriptionService.self) private var subscriptions
-    @State private var isPresentingPaywall = false
-
-    var body: some View {
-        SettingsCard(title: "Remodex Pro") {
-            HStack {
-                Text("Status")
-                Spacer()
-                Text(subscriptions.hasProAccess ? "Active" : "Free")
-                    .foregroundStyle(subscriptions.hasProAccess ? .green : .secondary)
-            }
-
-            SettingsButton(subscriptions.hasProAccess ? "View Pro" : "Upgrade to Pro") {
-                isPresentingPaywall = true
-            }
-
-            SettingsButton(subscriptions.isRestoring ? "Restoring..." : "Restore Purchases", isLoading: subscriptions.isRestoring) {
-                Task {
-                    await subscriptions.restorePurchases()
-                }
-            }
-            .disabled(subscriptions.isPurchasing)
-
-            if let error = subscriptions.lastErrorMessage, !error.isEmpty {
-                Text(error)
-                    .font(AppFont.caption())
-                    .foregroundStyle(.red)
-            }
-        }
-        .sheet(isPresented: $isPresentingPaywall) {
-            RevenueCatPaywallView()
-        }
-    }
-}
-
 // MARK: - Reusable card / button components
 
 struct SettingsCard<Content: View>: View {
@@ -389,23 +364,33 @@ struct SettingsButton: View {
 
     var body: some View {
         Button(action: action) {
-            Group {
+            HStack(spacing: 10) {
                 if isLoading {
                     ProgressView()
-                } else {
-                    Text(title)
+                        .controlSize(.small)
                 }
+
+                Text(title)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
             }
             .font(AppFont.subheadline(weight: .medium))
             .foregroundStyle(role == .destructive ? .red : (role == .cancel ? .secondary : .primary))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .background(
-                (role == .destructive ? Color.red : Color.primary).opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill((role == .destructive ? Color.red : Color.primary).opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke((role == .destructive ? Color.red : Color.primary).opacity(0.12), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
+        .disabled(isLoading)
     }
 }
 
@@ -791,7 +776,7 @@ private struct SettingsAboutCard: View {
                 isShowingAbout = true
             } label: {
                 settingsAccessoryRow(
-                    title: "How Remodex Works",
+                    title: "How Harmony Works",
                     leading: {
                         Image(systemName: "info.circle")
                             .font(AppFont.subheadline(weight: .medium))
@@ -802,12 +787,10 @@ private struct SettingsAboutCard: View {
 
             Button {
                 HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                if let url = URL(string: "https://x.com/emanueledpt") {
-                    UIApplication.shared.open(url)
-                }
+                UIApplication.shared.open(AppEnvironment.openSourceRepositoryURL)
             } label: {
                 settingsAccessoryRow(
-                    title: "Chat & Support",
+                    title: "Project Repository",
                     leading: {
                         Image("x-icon")
                             .renderingMode(.template)

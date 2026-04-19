@@ -1,8 +1,8 @@
 // FILE: TurnMessageEnvironmentKeys.swift
 // Purpose: SwiftUI environment keys for turn-scoped actions such as reconnect, inline commit/push, assistant revert, and subagent open.
 // Layer: View Support
-// Exports: EnvironmentValues.reconnectAction, EnvironmentValues.wakeMacDisplayAction, EnvironmentValues.inlineCommitAndPushAction,
-//   EnvironmentValues.assistantRevertAction, EnvironmentValues.subagentOpenAction
+// Exports: EnvironmentValues.reconnectAction, EnvironmentValues.wakeMacDisplayAction, EnvironmentValues.inlineGitAction,
+//   EnvironmentValues.inlineGitRunningAction, EnvironmentValues.assistantRevertAction, EnvironmentValues.subagentOpenAction
 // Depends on: SwiftUI, CodexMessage
 
 import SwiftUI
@@ -37,6 +37,28 @@ extension EnvironmentValues {
     var inlineCommitAndPushAction: (() -> Void)? {
         get { self[InlineCommitAndPushActionKey.self] }
         set { self[InlineCommitAndPushActionKey.self] = newValue }
+    }
+}
+
+private struct InlineGitActionKey: EnvironmentKey {
+    static let defaultValue: ((TurnGitActionKind) -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var inlineGitAction: ((TurnGitActionKind) -> Void)? {
+        get { self[InlineGitActionKey.self] }
+        set { self[InlineGitActionKey.self] = newValue }
+    }
+}
+
+private struct InlineGitRunningActionKey: EnvironmentKey {
+    static let defaultValue: TurnGitActionKind? = nil
+}
+
+extension EnvironmentValues {
+    var inlineGitRunningAction: TurnGitActionKind? {
+        get { self[InlineGitRunningActionKey.self] }
+        set { self[InlineGitRunningActionKey.self] = newValue }
     }
 }
 

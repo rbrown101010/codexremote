@@ -17,8 +17,6 @@ struct AssistantBlockAccessoryState: Equatable {
 // ─── Tool Burst Projection ─────────────────────────────────────
 
 struct TurnTimelineToolBurstGroup: Identifiable, Equatable {
-    static let collapsedVisibleCount = 5
-
     let id: String
     let messages: [CodexMessage]
 
@@ -28,15 +26,15 @@ struct TurnTimelineToolBurstGroup: Identifiable, Equatable {
     }
 
     var pinnedMessages: [CodexMessage] {
-        Array(messages.prefix(Self.collapsedVisibleCount))
+        []
     }
 
     var overflowMessages: [CodexMessage] {
-        Array(messages.dropFirst(Self.collapsedVisibleCount))
+        messages
     }
 
     var hiddenCount: Int {
-        overflowMessages.count
+        messages.count
     }
 }
 
@@ -63,11 +61,7 @@ enum TurnTimelineRenderProjection {
 
         func flushBufferedToolMessages() {
             guard !bufferedToolMessages.isEmpty else { return }
-            if bufferedToolMessages.count > TurnTimelineToolBurstGroup.collapsedVisibleCount {
-                items.append(.toolBurst(TurnTimelineToolBurstGroup(messages: bufferedToolMessages)))
-            } else {
-                items.append(contentsOf: bufferedToolMessages.map(TurnTimelineRenderItem.message))
-            }
+            items.append(.toolBurst(TurnTimelineToolBurstGroup(messages: bufferedToolMessages)))
             bufferedToolMessages.removeAll(keepingCapacity: true)
         }
 
@@ -179,7 +173,7 @@ private struct TurnTimelineToolBurstView: View {
     @State private var isExpanded = false
 
     private var summaryCountLabel: String {
-        "+\(group.hiddenCount)"
+        "\(group.hiddenCount)"
     }
 
     private var summaryNounLabel: String {

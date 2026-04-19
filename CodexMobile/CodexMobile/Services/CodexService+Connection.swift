@@ -362,16 +362,16 @@ extension CodexService {
         } else if let bridgeVersion, !bridgeVersion.isEmpty,
                   let minimumSupportedAppVersion, !minimumSupportedAppVersion.isEmpty {
             promptMessage =
-                "This Mac bridge is running Remodex \(bridgeVersion), which requires Remodex iPhone \(minimumSupportedAppVersion) or newer. Update the iPhone app, then reconnect."
+                "This Mac bridge is running version \(bridgeVersion), which requires Harmony \(minimumSupportedAppVersion) or newer on iPhone. Update the app, then reconnect."
         } else if let minimumSupportedAppVersion, !minimumSupportedAppVersion.isEmpty {
             promptMessage =
-                "This Mac bridge requires Remodex iPhone \(minimumSupportedAppVersion) or newer. Update the iPhone app, then reconnect."
+                "This Mac bridge requires Harmony \(minimumSupportedAppVersion) or newer on iPhone. Update the app, then reconnect."
         } else {
-            promptMessage = "This Mac bridge requires a newer Remodex iPhone app. Update the app, then reconnect."
+            promptMessage = "This Mac bridge requires a newer Harmony app on iPhone. Update the app, then reconnect."
         }
 
         bridgeUpdatePrompt = CodexBridgeUpdatePrompt(
-            title: "Update Remodex on your iPhone to reconnect",
+            title: "Update Harmony on your iPhone to reconnect",
             message: promptMessage,
             command: nil
         )
@@ -383,17 +383,17 @@ extension CodexService {
         if let bridgeVersion, !bridgeVersion.isEmpty,
            let minimumSupportedAppVersion, !minimumSupportedAppVersion.isEmpty {
             return .invalidInput(
-                "This Mac bridge is running Remodex \(bridgeVersion), which requires Remodex iPhone \(minimumSupportedAppVersion) or newer. Update the iPhone app, then reconnect."
+                "This Mac bridge is running version \(bridgeVersion), which requires Harmony \(minimumSupportedAppVersion) or newer on iPhone. Update the app, then reconnect."
             )
         }
 
         if let minimumSupportedAppVersion, !minimumSupportedAppVersion.isEmpty {
             return .invalidInput(
-                "This Mac bridge requires Remodex iPhone \(minimumSupportedAppVersion) or newer. Update the iPhone app, then reconnect."
+                "This Mac bridge requires Harmony \(minimumSupportedAppVersion) or newer on iPhone. Update the app, then reconnect."
             )
         }
 
-        return .invalidInput("This Mac bridge requires a newer Remodex iPhone app. Update the app, then reconnect.")
+        return .invalidInput("This Mac bridge requires a newer Harmony app on iPhone. Update the app, then reconnect.")
     }
 
     // Classifies socket failures so transient relay hiccups reconnect, while dead pairings are forgotten.
@@ -790,7 +790,7 @@ extension CodexService {
         if nsError.domain == NSURLErrorDomain,
            nsError.code == NSURLErrorNotConnectedToInternet,
            requiresLocalNetworkAuthorization(for: URL(string: attemptedURL) ?? URL(fileURLWithPath: "/")) {
-            return "Remodex cannot open the local relay connection on this iPhone. Check Local Network and the app's Wi-Fi/Cellular access in Settings, then retry."
+            return "Harmony cannot open the local relay connection on this iPhone. Check Local Network and the app's Wi-Fi/Cellular access in Settings, then retry."
         }
 
         return error.localizedDescription
@@ -1010,7 +1010,7 @@ extension CodexService {
             return nil
         }
 
-        return "Trying to reach your saved Mac. Remodex will keep retrying. If you restarted the bridge on your Mac, scan the new QR code."
+        return "Trying to reach your saved Mac. Harmony will keep retrying. If you restarted the bridge on your Mac, scan the new QR code."
     }
 
     func retryableSessionUnavailableMessage(forConnectError error: Error) -> String? {
@@ -1018,7 +1018,7 @@ extension CodexService {
             return nil
         }
 
-        return "Trying to reach your saved Mac. Remodex will keep retrying. If you restarted the bridge on your Mac, scan the new QR code."
+        return "Trying to reach your saved Mac. Harmony will keep retrying. If you restarted the bridge on your Mac, scan the new QR code."
     }
 
     // Surfaces relay-enforced drops that keep the pairing valid but lost the current send.
@@ -1071,7 +1071,7 @@ extension CodexService {
 
         guard status != .denied else {
             let message =
-                "Remodex is not allowed to access your local network. Enable Local Network for Remodex in iPhone Settings and try again."
+                "Harmony is not allowed to access your local network. Enable Local Network for Harmony in iPhone Settings and try again."
             lastErrorMessage = message
             throw CodexServiceError.invalidInput(message)
         }

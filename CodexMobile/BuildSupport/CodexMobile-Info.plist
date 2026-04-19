@@ -4,12 +4,12 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.emanueledipietro.CodexMobile.refresh</string>
+		<string>com.rileybrown.CodexMobile.refresh</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Remodex</string>
+	<string>Harmony</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -28,7 +28,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.emanueledipietro.CodexMobile.auth</string>
+			<string>com.rileybrown.CodexMobile.auth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>phodex</string>
@@ -40,7 +40,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Remodex needs camera access to let you take photos and attach them to your messages.</string>
+	<string>Harmony needs camera access to let you take photos and attach them to your messages.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -51,7 +51,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>CodexMobile needs local network access to connect to your Codex app-server running on your Mac.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Remodex needs microphone access to record voice notes for ChatGPT transcription.</string>
+	<string>Harmony needs microphone access to record voice notes for ChatGPT transcription.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_remodex-permission._tcp</string>
@@ -59,19 +59,13 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CodexMobile needs photo library access to let you attach images to your messages.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Remodex needs photo library access to let you save rendered diagrams and attachments.</string>
+	<string>Harmony needs photo library access to let you save rendered diagrams and attachments.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>PHODEX_CHATGPT_CALLBACK_SCHEME</key>
 	<string>$(PHODEX_CHATGPT_CALLBACK_SCHEME)</string>
 	<key>PHODEX_DEFAULT_RELAY_URL</key>
 	<string>$(PHODEX_DEFAULT_RELAY_URL)</string>
-	<key>REVENUECAT_PUBLIC_API_KEY</key>
-	<string>$(REVENUECAT_PUBLIC_API_KEY)</string>
-	<key>REVENUECAT_ENTITLEMENT_NAME</key>
-	<string>$(REVENUECAT_ENTITLEMENT_NAME)</string>
-	<key>REVENUECAT_DEFAULT_OFFERING_ID</key>
-	<string>$(REVENUECAT_DEFAULT_OFFERING_ID)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>JetBrainsMono-Regular.ttf</string>
