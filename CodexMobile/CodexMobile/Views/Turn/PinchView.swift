@@ -11,6 +11,8 @@ struct PinchView: View {
     let onClose: () -> Void
     let onSelectMessage: (CodexMessage) -> Void
 
+    private let scrollBottomAnchorID = "pinch-prompt-scroll-bottom-anchor"
+
     private var promptMessages: [CodexMessage] {
         messages.filter { message in
             message.role == .user
@@ -23,25 +25,38 @@ struct PinchView: View {
             if promptMessages.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(Array(promptMessages.enumerated()), id: \.element.id) { index, message in
-                            Button {
-                                onSelectMessage(message)
-                            } label: {
-                                PinchPromptRow(
-                                    index: index + 1,
-                                    message: message
-                                )
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(Array(promptMessages.enumerated()), id: \.element.id) { index, message in
+                                Button {
+                                    onSelectMessage(message)
+                                } label: {
+                                    PinchPromptRow(
+                                        index: index + 1,
+                                        message: message
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
+
+                            Color.clear
+                                .frame(height: 1)
+                                .id(scrollBottomAnchorID)
+                                .allowsHitTesting(false)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 58)
+                        .padding(.bottom, 20)
+                    }
+                    .defaultScrollAnchor(.bottom, for: .initialOffset)
+                    .scrollDismissesKeyboard(.interactively)
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(scrollBottomAnchorID, anchor: .bottom)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 58)
-                    .padding(.bottom, 20)
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
