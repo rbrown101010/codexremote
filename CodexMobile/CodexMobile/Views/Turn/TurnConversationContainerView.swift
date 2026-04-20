@@ -40,6 +40,8 @@ struct TurnConversationContainerView: View {
     @State private var cachedMessageLayout = TimelineMessageLayout.empty
     @State private var lastMessageLayoutThreadID: String?
     @State private var lastMessageLayoutToken: Int = -1
+    @State private var isPinchViewPresented = false
+    @State private var didActivatePinchGesture = false
 
     // Falls back to a one-off rebuild during first render, then keeps later renders on cached derived state.
     private var messageLayout: TimelineMessageLayout {
@@ -119,7 +121,23 @@ struct TurnConversationContainerView: View {
                     usageToastOverlay
                 }
             }
+
+            if isPinchViewPresented {
+                PinchView(messages: messages) {
+                    dismissPinchView()
+                }
+                .transition(
+                    .asymmetric(
+                        insertion: .scale(scale: 0.86).combined(with: .opacity),
+                        removal: .scale(scale: 1.04).combined(with: .opacity)
+                    )
+                )
+                .zIndex(20)
+                .simultaneousGesture(pinchDismissGesture)
+            }
         }
+        .simultaneousGesture(pinchPresentGesture)
+        .animation(.spring(response: 0.32, dampingFraction: 0.86), value: isPinchViewPresented)
         .onAppear {
             rebuildMessageLayoutIfNeeded(force: true)
         }
@@ -138,6 +156,51 @@ struct TurnConversationContainerView: View {
             if let pinnedTaskPlanMessage = messageLayout.pinnedTaskPlanMessage {
                 PlanExecutionSheet(message: pinnedTaskPlanMessage)
             }
+        }
+    }
+
+    private var pinchPresentGesture: some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                guard !isPinchViewPresented,
+                      !didActivatePinchGesture,
+                      value < 0.78 else {
+                    return
+                }
+
+                didActivatePinchGesture = true
+                HapticFeedback.shared.triggerImpactFeedback(style: .medium)
+                onTapOutsideComposer()
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                    isPinchViewPresented = true
+                }
+            }
+            .onEnded { _ in
+                didActivatePinchGesture = false
+            }
+    }
+
+    private var pinchDismissGesture: some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                guard isPinchViewPresented,
+                      !didActivatePinchGesture,
+                      value > 1.18 else {
+                    return
+                }
+
+                didActivatePinchGesture = true
+                dismissPinchView()
+            }
+            .onEnded { _ in
+                didActivatePinchGesture = false
+            }
+    }
+
+    private func dismissPinchView() {
+        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+            isPinchViewPresented = false
         }
     }
 
