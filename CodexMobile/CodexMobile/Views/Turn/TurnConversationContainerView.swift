@@ -42,6 +42,7 @@ struct TurnConversationContainerView: View {
     @State private var lastMessageLayoutToken: Int = -1
     @State private var isPinchViewPresented = false
     @State private var didActivatePinchGesture = false
+    @State private var pendingPinchScrollTargetID: String?
 
     // Falls back to a one-off rebuild during first render, then keeps later renders on cached derived state.
     private var messageLayout: TimelineMessageLayout {
@@ -103,6 +104,7 @@ struct TurnConversationContainerView: View {
                 hidesErrorMessage: composerRecoveryAccessory != nil,
                 shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponse,
                 isScrolledToBottom: isScrolledToBottom,
+                pendingScrollTargetMessageID: $pendingPinchScrollTargetID,
                 isComposerFocused: isComposerFocused,
                 isComposerAutocompletePresented: isComposerAutocompletePresented,
                 onRetryUserMessage: onRetryUserMessage,
@@ -125,6 +127,8 @@ struct TurnConversationContainerView: View {
             if isPinchViewPresented {
                 PinchView(messages: messages) {
                     dismissPinchView()
+                } onSelectMessage: { message in
+                    jumpToMessageFromPinchView(message)
                 }
                 .transition(
                     .asymmetric(
@@ -199,6 +203,14 @@ struct TurnConversationContainerView: View {
 
     private func dismissPinchView() {
         HapticFeedback.shared.triggerImpactFeedback(style: .light)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+            isPinchViewPresented = false
+        }
+    }
+
+    private func jumpToMessageFromPinchView(_ message: CodexMessage) {
+        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+        pendingPinchScrollTargetID = message.id
         withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
             isPinchViewPresented = false
         }

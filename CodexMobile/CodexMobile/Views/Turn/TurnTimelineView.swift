@@ -402,6 +402,7 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
 
     @Binding var shouldAnchorToAssistantResponse: Bool
     @Binding var isScrolledToBottom: Bool
+    @Binding var pendingScrollTargetMessageID: String?
     let isComposerFocused: Bool
     let isComposerAutocompletePresented: Bool
 
@@ -641,6 +642,9 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                         autoScrollMode = isScrolledToBottom ? .followBottom : .manual
                     }
                 }
+                .onChange(of: pendingScrollTargetMessageID) { _, targetMessageID in
+                    scrollToTargetMessageIfNeeded(targetMessageID, using: proxy)
+                }
                 // Keeps footer pinned to bottom without adding a solid spacer block above it.
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     footer(scrollToBottomAction: {
@@ -653,6 +657,7 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
                     recomputeBlockInfoIfNeeded()
                     scheduleProgressiveTailRevealIfNeeded()
                     handleTimelineMutation(using: proxy)
+                    scrollToTargetMessageIfNeeded(pendingScrollTargetMessageID, using: proxy)
                 }
                 .onDisappear {
                     debugTimelineLog("onDisappear threadID=\(threadID)")
@@ -789,6 +794,35 @@ struct TurnTimelineView<EmptyState: View, Composer: View>: View {
         isUserDraggingScroll = false
         userScrollCooldownUntil = nil
         scrollToBottom(using: proxy, animated: true)
+    }
+
+    private func scrollToTargetMessageIfNeeded(_ targetMessageID: String?, using proxy: ScrollViewProxy) {
+        guard let targetMessageID,
+              let targetIndex = messages.firstIndex(where: { $0.id == targetMessageID }) else {
+            pendingScrollTargetMessageID = nil
+            return
+        }
+
+        progressiveTailRevealTask?.cancel()
+        progressiveTailRevealTask = nil
+        isProgressivelyRevealingRecentTail = false
+        shouldAnchorToAssistantResponse = false
+        autoScrollMode = .manual
+        initialRecoverySnapPendingThreadID = nil
+        userScrollCooldownUntil = nil
+
+        let neededTailCount = messages.count - targetIndex
+        if visibleTailCount < neededTailCount {
+            visibleTailCount = min(neededTailCount, messages.count)
+        }
+
+        DispatchQueue.main.async {
+            guard pendingScrollTargetMessageID == targetMessageID else { return }
+            withAnimation(.easeInOut(duration: 0.22)) {
+                proxy.scrollTo(targetMessageID, anchor: .top)
+            }
+            pendingScrollTargetMessageID = nil
+        }
     }
 
     // Resets per-thread scroll intent so each opened conversation gets one fresh

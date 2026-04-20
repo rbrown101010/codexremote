@@ -9,6 +9,7 @@ import SwiftUI
 struct PinchView: View {
     let messages: [CodexMessage]
     let onClose: () -> Void
+    let onSelectMessage: (CodexMessage) -> Void
 
     private var promptMessages: [CodexMessage] {
         messages.filter { message in
@@ -19,23 +20,26 @@ struct PinchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-
             if promptMessages.isEmpty {
                 emptyState
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(Array(promptMessages.enumerated()), id: \.element.id) { index, message in
-                            PinchPromptRow(
-                                index: index + 1,
-                                message: message
-                            )
+                            Button {
+                                onSelectMessage(message)
+                            } label: {
+                                PinchPromptRow(
+                                    index: index + 1,
+                                    message: message
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 10)
-                    .padding(.bottom, 28)
+                    .padding(.top, 58)
+                    .padding(.bottom, 20)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -43,7 +47,7 @@ struct PinchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.secondarySystemBackground))
         .overlay(alignment: .bottom) {
-            Text("Pinch out or tap Close to return to chat")
+            Text("Tap a prompt to jump back")
                 .font(AppFont.caption())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
@@ -51,35 +55,20 @@ struct PinchView: View {
                 .background(.regularMaterial, in: Capsule())
                 .padding(.bottom, 12)
         }
-        .accessibilityIdentifier("turn.pinch.promptList")
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Pinch")
-                    .font(AppFont.title3(weight: .semibold))
-                Text("\(promptMessages.count) sent prompt\(promptMessages.count == 1 ? "" : "s")")
-                    .font(AppFont.caption())
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
+        .overlay(alignment: .topTrailing) {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(AppFont.system(size: 13, weight: .bold))
                     .foregroundStyle(.primary)
                     .frame(width: 34, height: 34)
-                    .background(Color(.tertiarySystemBackground), in: Circle())
+                    .background(.regularMaterial, in: Circle())
             }
             .buttonStyle(.plain)
+            .padding(.top, 10)
+            .padding(.trailing, 14)
             .accessibilityLabel("Close Pinch view")
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 12)
-        .background(.regularMaterial)
+        .accessibilityIdentifier("turn.pinch.promptList")
     }
 
     private var emptyState: some View {
@@ -130,20 +119,21 @@ private struct PinchPromptRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(metadata)
-                .font(AppFont.caption(weight: .medium))
+                .font(AppFont.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
             Text(promptText)
-                .font(AppFont.body())
+                .font(AppFont.system(size: 14, weight: .regular))
                 .foregroundStyle(.primary)
-                .lineSpacing(3)
+                .lineSpacing(2)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(14)
-        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
         }
     }
