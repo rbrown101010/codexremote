@@ -28,16 +28,12 @@ struct PinchView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
-                            ForEach(Array(promptMessages.enumerated()), id: \.element.id) { index, message in
-                                Button {
+                            ForEach(promptMessages, id: \.id) { message in
+                                PinchPromptRow(
+                                    message: message
+                                ) {
                                     onSelectMessage(message)
-                                } label: {
-                                    PinchPromptRow(
-                                        index: index + 1,
-                                        message: message
-                                    )
                                 }
-                                .buttonStyle(.plain)
                             }
 
                             Color.clear
@@ -110,15 +106,17 @@ struct PinchView: View {
 }
 
 private struct PinchPromptRow: View {
-    let index: Int
     let message: CodexMessage
+    let onSelect: () -> Void
+
+    @State private var isExpanded = false
 
     private var promptText: String {
         message.text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var metadata: String {
-        var parts = ["#\(index)"]
+    private var metadataParts: [String] {
+        var parts: [String] = []
 
         if !message.fileMentions.isEmpty {
             parts.append("\(message.fileMentions.count) file\(message.fileMentions.count == 1 ? "" : "s")")
@@ -128,21 +126,54 @@ private struct PinchPromptRow: View {
             parts.append("\(message.attachments.count) attachment\(message.attachments.count == 1 ? "" : "s")")
         }
 
-        return parts.joined(separator: " - ")
+        return parts
+    }
+
+    private var isExpandable: Bool {
+        let explicitLineCount = promptText.reduce(1) { count, character in
+            character == "\n" || character == "\r" ? count + 1 : count
+        }
+        return promptText.count > 220 || explicitLineCount > 3
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(metadata)
-                .font(AppFont.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+                if !metadataParts.isEmpty {
+                    Text(metadataParts.joined(separator: " - "))
+                        .font(AppFont.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
 
-            Text(promptText)
-                .font(AppFont.system(size: 14, weight: .regular))
-                .foregroundStyle(.primary)
-                .lineSpacing(2)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(promptText)
+                    .font(AppFont.system(size: 14, weight: .regular))
+                    .foregroundStyle(.primary)
+                    .lineSpacing(2)
+                    .lineLimit(isExpanded ? nil : 3)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onSelect()
+            }
+
+            if isExpandable {
+                Button {
+                    HapticFeedback.shared.triggerSelectionFeedback()
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle")
+                        .font(AppFont.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded ? "Collapse prompt" : "Expand prompt")
+            }
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 12)

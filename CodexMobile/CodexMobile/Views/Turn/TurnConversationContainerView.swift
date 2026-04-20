@@ -42,6 +42,8 @@ struct TurnConversationContainerView: View {
     @State private var lastMessageLayoutToken: Int = -1
     @State private var isPinchViewPresented = false
     @State private var didActivatePinchGesture = false
+    @State private var didStartPinchPreview = false
+    @State private var pinchPresentationProgress: CGFloat = 0
     @State private var pendingPinchScrollTargetID: String?
 
     // Falls back to a one-off rebuild during first render, then keeps later renders on cached derived state.
@@ -54,6 +56,10 @@ struct TurnConversationContainerView: View {
             )
         }
         return cachedMessageLayout
+    }
+
+    private var pinchOverlayProgress: CGFloat {
+        isPinchViewPresented ? 1 : pinchPresentationProgress
     }
 
     // Keeps accessory-only chats informative instead of showing a blank viewport.
@@ -123,19 +129,18 @@ struct TurnConversationContainerView: View {
                     usageToastOverlay
                 }
             }
+            .scaleEffect(1 - (0.025 * pinchOverlayProgress))
+            .blur(radius: 2.4 * pinchOverlayProgress)
 
-            if isPinchViewPresented {
+            if isPinchViewPresented || pinchPresentationProgress > 0 {
                 PinchView(messages: messages) {
                     dismissPinchView()
                 } onSelectMessage: { message in
                     jumpToMessageFromPinchView(message)
                 }
-                .transition(
-                    .asymmetric(
-                        insertion: .scale(scale: 0.86).combined(with: .opacity),
-                        removal: .scale(scale: 1.04).combined(with: .opacity)
-                    )
-                )
+                .opacity(pinchOverlayProgress)
+                .scaleEffect(0.93 + (0.07 * pinchOverlayProgress))
+                .offset(y: 26 * (1 - pinchOverlayProgress))
                 .zIndex(20)
                 .simultaneousGesture(pinchDismissGesture)
             }
@@ -167,20 +172,37 @@ struct TurnConversationContainerView: View {
         MagnificationGesture()
             .onChanged { value in
                 guard !isPinchViewPresented,
-                      !didActivatePinchGesture,
-                      value < 0.78 else {
+                      !didActivatePinchGesture else {
                     return
                 }
+
+                let progress = min(max((1 - value) / 0.22, 0), 1)
+                pinchPresentationProgress = progress
+
+                if progress > 0.08, !didStartPinchPreview {
+                    didStartPinchPreview = true
+                    HapticFeedback.shared.triggerSelectionFeedback()
+                }
+
+                guard progress >= 1 else { return }
 
                 didActivatePinchGesture = true
                 HapticFeedback.shared.triggerImpactFeedback(style: .medium)
                 onTapOutsideComposer()
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+                    pinchPresentationProgress = 1
                     isPinchViewPresented = true
                 }
             }
             .onEnded { _ in
+                if !isPinchViewPresented {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
+                        pinchPresentationProgress = 0
+                    }
+                }
+
                 didActivatePinchGesture = false
+                didStartPinchPreview = false
             }
     }
 
@@ -205,6 +227,7 @@ struct TurnConversationContainerView: View {
         HapticFeedback.shared.triggerImpactFeedback(style: .light)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
             isPinchViewPresented = false
+            pinchPresentationProgress = 0
         }
     }
 
@@ -213,6 +236,7 @@ struct TurnConversationContainerView: View {
         pendingPinchScrollTargetID = message.id
         withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
             isPinchViewPresented = false
+            pinchPresentationProgress = 0
         }
     }
 
