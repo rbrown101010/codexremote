@@ -38,7 +38,7 @@ struct PinchView: View {
                                 .visualEffect { content, geometry in
                                     let minY = geometry.frame(in: .named(Self.scrollCoordinateSpaceName)).minY
                                     let progress = Self.topSofteningProgress(for: minY)
-                                    content
+                                    return content
                                         .blur(radius: 3.5 * progress)
                                         .opacity(1 - (0.5 * progress))
                                 }
