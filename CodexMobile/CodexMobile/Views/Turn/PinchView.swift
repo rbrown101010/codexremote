@@ -11,7 +11,6 @@ struct PinchView: View {
     let onSelectMessage: (CodexMessage) -> Void
 
     private let scrollBottomAnchorID = "pinch-prompt-scroll-bottom-anchor"
-    private static let scrollCoordinateSpaceName = "pinch-prompt-scroll-space"
     private static let topMessageFadeHeight: CGFloat = 108
 
     private var promptMessages: [CodexMessage] {
@@ -27,20 +26,13 @@ struct PinchView: View {
                 emptyState
             } else {
                 ScrollViewReader { proxy in
-                    ScrollView(.vertical) {
+                    ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(promptMessages, id: \.id) { message in
                                 PinchPromptRow(
                                     message: message
                                 ) {
                                     onSelectMessage(message)
-                                }
-                                .visualEffect { content, geometry in
-                                    let minY = geometry.frame(in: .named(Self.scrollCoordinateSpaceName)).minY
-                                    let progress = Self.topSofteningProgress(for: minY)
-                                    return content
-                                        .blur(radius: 3.5 * progress)
-                                        .opacity(1 - (0.5 * progress))
                                 }
                             }
 
@@ -53,7 +45,6 @@ struct PinchView: View {
                         .padding(.top, 58)
                         .padding(.bottom, 20)
                     }
-                    .coordinateSpace(name: Self.scrollCoordinateSpaceName)
                     .defaultScrollAnchor(.bottom, for: .initialOffset)
                     .scrollDismissesKeyboard(.interactively)
                     .onAppear {
@@ -79,13 +70,6 @@ struct PinchView: View {
                 .padding(.bottom, 12)
         }
         .accessibilityIdentifier("turn.pinch.promptList")
-    }
-
-    private static func topSofteningProgress(for minY: CGFloat) -> CGFloat {
-        let fadeStart: CGFloat = 92
-        let fadeEnd: CGFloat = 18
-        let rawProgress = (fadeStart - minY) / (fadeStart - fadeEnd)
-        return min(max(rawProgress, 0), 1)
     }
 
     private var topMessageFade: some View {
