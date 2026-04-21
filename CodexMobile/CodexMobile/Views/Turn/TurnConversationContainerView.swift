@@ -92,45 +92,48 @@ struct TurnConversationContainerView: View {
     // ─── ENTRY POINT ─────────────────────────────────────────────
     var body: some View {
         ZStack(alignment: .top) {
-            TurnTimelineView(
-                threadID: threadID,
-                messages: messageLayout.timelineMessages,
-                timelineChangeToken: timelineChangeToken,
-                activeTurnID: activeTurnID,
-                isThreadRunning: isThreadRunning,
-                latestTurnTerminalState: latestTurnTerminalState,
-                completedTurnIDs: completedTurnIDs,
-                stoppedTurnIDs: stoppedTurnIDs,
-                assistantRevertStatesByMessageID: assistantRevertStatesByMessageID,
-                planSessionSource: planSessionSource,
-                allowsAssistantPlanFallbackRecovery: allowsAssistantPlanFallbackRecovery,
-                threadMessagesForPlanMatching: threadMessagesForPlanMatching,
-                isRetryAvailable: !isThreadRunning,
-                errorMessage: errorMessage,
-                hidesErrorMessage: composerRecoveryAccessory != nil,
-                shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponse,
-                isScrolledToBottom: isScrolledToBottom,
-                pendingScrollTargetMessageID: $pendingPinchScrollTargetID,
-                isComposerFocused: isComposerFocused,
-                isComposerAutocompletePresented: isComposerAutocompletePresented,
-                onRetryUserMessage: onRetryUserMessage,
-                onTapAssistantRevert: onTapAssistantRevert,
-                onTapSubagent: onTapSubagent,
-                onTapOutsideComposer: onTapOutsideComposer
-            ) {
-                timelineEmptyState
-            } composer: {
-                composerWithPinnedPlanAccessory
-            }
+            ZStack(alignment: .top) {
+                TurnTimelineView(
+                    threadID: threadID,
+                    messages: messageLayout.timelineMessages,
+                    timelineChangeToken: timelineChangeToken,
+                    activeTurnID: activeTurnID,
+                    isThreadRunning: isThreadRunning,
+                    latestTurnTerminalState: latestTurnTerminalState,
+                    completedTurnIDs: completedTurnIDs,
+                    stoppedTurnIDs: stoppedTurnIDs,
+                    assistantRevertStatesByMessageID: assistantRevertStatesByMessageID,
+                    planSessionSource: planSessionSource,
+                    allowsAssistantPlanFallbackRecovery: allowsAssistantPlanFallbackRecovery,
+                    threadMessagesForPlanMatching: threadMessagesForPlanMatching,
+                    isRetryAvailable: !isThreadRunning,
+                    errorMessage: errorMessage,
+                    hidesErrorMessage: composerRecoveryAccessory != nil,
+                    shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponse,
+                    isScrolledToBottom: isScrolledToBottom,
+                    pendingScrollTargetMessageID: $pendingPinchScrollTargetID,
+                    isComposerFocused: isComposerFocused,
+                    isComposerAutocompletePresented: isComposerAutocompletePresented,
+                    onRetryUserMessage: onRetryUserMessage,
+                    onTapAssistantRevert: onTapAssistantRevert,
+                    onTapSubagent: onTapSubagent,
+                    onTapOutsideComposer: onTapOutsideComposer
+                ) {
+                    timelineEmptyState
+                } composer: {
+                    composerWithPinnedPlanAccessory
+                }
 
-            VStack(spacing: 0) {
-                repositoryLoadingToastOverlay
-                if !isRepositoryLoadingToastVisible {
-                    usageToastOverlay
+                VStack(spacing: 0) {
+                    repositoryLoadingToastOverlay
+                    if !isRepositoryLoadingToastVisible {
+                        usageToastOverlay
+                    }
                 }
             }
             .scaleEffect(1 - (0.025 * pinchOverlayProgress))
-            .blur(radius: 2.4 * pinchOverlayProgress)
+            .blur(radius: 6 * pinchOverlayProgress)
+            .saturation(1 - (0.2 * pinchOverlayProgress))
 
             if isPinchViewPresented || pinchPresentationProgress > 0 {
                 PinchView(messages: messages) {

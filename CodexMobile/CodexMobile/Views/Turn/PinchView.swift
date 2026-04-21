@@ -56,7 +56,8 @@ struct PinchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.secondarySystemBackground))
+        .background(.thinMaterial)
+        .background(Color(.secondarySystemBackground).opacity(0.58))
         .overlay(alignment: .bottom) {
             Text("Tap a prompt to jump back")
                 .font(AppFont.caption())

@@ -199,6 +199,10 @@ struct TurnComposerView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .adaptiveGlass(.regular, in: RoundedRectangle(cornerRadius: 28))
+            .overlay {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1.35)
+            }
             .overlay(alignment: .topLeading) {
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: 0, alignment: .topLeading)
