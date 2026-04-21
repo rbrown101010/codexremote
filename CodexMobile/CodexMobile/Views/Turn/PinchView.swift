@@ -27,7 +27,7 @@ struct PinchView: View {
                 emptyState
             } else {
                 ScrollViewReader { proxy in
-                    ScrollView {
+                    ScrollView(.vertical) {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(promptMessages, id: \.id) { message in
                                 PinchPromptRow(
