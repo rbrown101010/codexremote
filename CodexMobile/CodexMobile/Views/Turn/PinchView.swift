@@ -11,6 +11,7 @@ struct PinchView: View {
     let onSelectMessage: (CodexMessage) -> Void
 
     private let scrollBottomAnchorID = "pinch-prompt-scroll-bottom-anchor"
+    private let topMessageBlurHeight: CGFloat = 112
 
     private var promptMessages: [CodexMessage] {
         messages.filter { message in
@@ -57,6 +58,9 @@ struct PinchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.thinMaterial)
         .background(Color(.secondarySystemBackground).opacity(0.58))
+        .overlay(alignment: .top) {
+            topMessageBlur
+        }
         .overlay(alignment: .bottom) {
             Text("Tap a prompt to jump back")
                 .font(AppFont.caption())
@@ -67,6 +71,35 @@ struct PinchView: View {
                 .padding(.bottom, 12)
         }
         .accessibilityIdentifier("turn.pinch.promptList")
+    }
+
+    private var topMessageBlur: some View {
+        Color.clear
+            .background(.thinMaterial)
+            .overlay {
+                LinearGradient(
+                    colors: [
+                        Color(.secondarySystemBackground).opacity(0.62),
+                        Color(.secondarySystemBackground).opacity(0.24),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .mask(
+                LinearGradient(
+                    stops: [
+                        Gradient.Stop(color: .black, location: 0),
+                        Gradient.Stop(color: .black.opacity(0.94), location: 0.46),
+                        Gradient.Stop(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(height: topMessageBlurHeight)
+            .allowsHitTesting(false)
     }
 
     private var emptyState: some View {
