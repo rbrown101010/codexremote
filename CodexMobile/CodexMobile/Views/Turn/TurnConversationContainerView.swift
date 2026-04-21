@@ -131,6 +131,9 @@ struct TurnConversationContainerView: View {
         .onChange(of: timelineChangeToken) { _, _ in
             rebuildMessageLayoutIfNeeded()
         }
+        .onChange(of: isPinchViewPresented) { _, isPresented in
+            handleExternalPinchPresentationChange(isPresented)
+        }
         .onChange(of: messageLayout.pinnedTaskPlanMessage?.id) { _, newValue in
             if newValue == nil {
                 isShowingPinnedPlanSheet = false
@@ -139,6 +142,16 @@ struct TurnConversationContainerView: View {
         .sheet(isPresented: $isShowingPinnedPlanSheet) {
             if let pinnedTaskPlanMessage = messageLayout.pinnedTaskPlanMessage {
                 PlanExecutionSheet(message: pinnedTaskPlanMessage)
+            }
+        }
+    }
+
+    private func handleExternalPinchPresentationChange(_ isPresented: Bool) {
+        if isPresented {
+            pinchPresentationProgress = 1
+        } else if pinchPresentationProgress > 0 {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                pinchPresentationProgress = 0
             }
         }
     }
