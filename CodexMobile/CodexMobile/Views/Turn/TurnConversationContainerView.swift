@@ -62,6 +62,18 @@ struct TurnConversationContainerView: View {
         isPinchViewPresented ? 1 : pinchPresentationProgress
     }
 
+    private var pinchBackgroundScale: CGFloat {
+        1 - (0.025 * pinchOverlayProgress)
+    }
+
+    private var pinchBackgroundBlur: CGFloat {
+        6 * pinchOverlayProgress
+    }
+
+    private var pinchBackgroundSaturation: CGFloat {
+        1 - (0.2 * pinchOverlayProgress)
+    }
+
     // Keeps accessory-only chats informative instead of showing a blank viewport.
     private var timelineEmptyState: AnyView {
         guard messageLayout.timelineMessages.isEmpty else {
@@ -92,48 +104,10 @@ struct TurnConversationContainerView: View {
     // ─── ENTRY POINT ─────────────────────────────────────────────
     var body: some View {
         ZStack(alignment: .top) {
-            ZStack(alignment: .top) {
-                TurnTimelineView(
-                    threadID: threadID,
-                    messages: messageLayout.timelineMessages,
-                    timelineChangeToken: timelineChangeToken,
-                    activeTurnID: activeTurnID,
-                    isThreadRunning: isThreadRunning,
-                    latestTurnTerminalState: latestTurnTerminalState,
-                    completedTurnIDs: completedTurnIDs,
-                    stoppedTurnIDs: stoppedTurnIDs,
-                    assistantRevertStatesByMessageID: assistantRevertStatesByMessageID,
-                    planSessionSource: planSessionSource,
-                    allowsAssistantPlanFallbackRecovery: allowsAssistantPlanFallbackRecovery,
-                    threadMessagesForPlanMatching: threadMessagesForPlanMatching,
-                    isRetryAvailable: !isThreadRunning,
-                    errorMessage: errorMessage,
-                    hidesErrorMessage: composerRecoveryAccessory != nil,
-                    shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponse,
-                    isScrolledToBottom: isScrolledToBottom,
-                    pendingScrollTargetMessageID: $pendingPinchScrollTargetID,
-                    isComposerFocused: isComposerFocused,
-                    isComposerAutocompletePresented: isComposerAutocompletePresented,
-                    onRetryUserMessage: onRetryUserMessage,
-                    onTapAssistantRevert: onTapAssistantRevert,
-                    onTapSubagent: onTapSubagent,
-                    onTapOutsideComposer: onTapOutsideComposer
-                ) {
-                    timelineEmptyState
-                } composer: {
-                    composerWithPinnedPlanAccessory
-                }
-
-                VStack(spacing: 0) {
-                    repositoryLoadingToastOverlay
-                    if !isRepositoryLoadingToastVisible {
-                        usageToastOverlay
-                    }
-                }
-            }
-            .scaleEffect(1 - (0.025 * pinchOverlayProgress))
-            .blur(radius: 6 * pinchOverlayProgress)
-            .saturation(1 - (0.2 * pinchOverlayProgress))
+            conversationLayer
+                .scaleEffect(pinchBackgroundScale)
+                .blur(radius: pinchBackgroundBlur)
+                .saturation(pinchBackgroundSaturation)
 
             if isPinchViewPresented || pinchPresentationProgress > 0 {
                 PinchView(messages: messages) {
@@ -167,6 +141,55 @@ struct TurnConversationContainerView: View {
         .sheet(isPresented: $isShowingPinnedPlanSheet) {
             if let pinnedTaskPlanMessage = messageLayout.pinnedTaskPlanMessage {
                 PlanExecutionSheet(message: pinnedTaskPlanMessage)
+            }
+        }
+    }
+
+    private var conversationLayer: some View {
+        ZStack(alignment: .top) {
+            timelineLayer
+            toastLayer
+        }
+    }
+
+    private var timelineLayer: some View {
+        TurnTimelineView(
+            threadID: threadID,
+            messages: messageLayout.timelineMessages,
+            timelineChangeToken: timelineChangeToken,
+            activeTurnID: activeTurnID,
+            isThreadRunning: isThreadRunning,
+            latestTurnTerminalState: latestTurnTerminalState,
+            completedTurnIDs: completedTurnIDs,
+            stoppedTurnIDs: stoppedTurnIDs,
+            assistantRevertStatesByMessageID: assistantRevertStatesByMessageID,
+            planSessionSource: planSessionSource,
+            allowsAssistantPlanFallbackRecovery: allowsAssistantPlanFallbackRecovery,
+            threadMessagesForPlanMatching: threadMessagesForPlanMatching,
+            isRetryAvailable: !isThreadRunning,
+            errorMessage: errorMessage,
+            hidesErrorMessage: composerRecoveryAccessory != nil,
+            shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponse,
+            isScrolledToBottom: isScrolledToBottom,
+            pendingScrollTargetMessageID: $pendingPinchScrollTargetID,
+            isComposerFocused: isComposerFocused,
+            isComposerAutocompletePresented: isComposerAutocompletePresented,
+            onRetryUserMessage: onRetryUserMessage,
+            onTapAssistantRevert: onTapAssistantRevert,
+            onTapSubagent: onTapSubagent,
+            onTapOutsideComposer: onTapOutsideComposer
+        ) {
+            timelineEmptyState
+        } composer: {
+            composerWithPinnedPlanAccessory
+        }
+    }
+
+    private var toastLayer: some View {
+        VStack(spacing: 0) {
+            repositoryLoadingToastOverlay
+            if !isRepositoryLoadingToastVisible {
+                usageToastOverlay
             }
         }
     }
