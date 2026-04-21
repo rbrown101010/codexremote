@@ -11,7 +11,8 @@ struct PinchView: View {
     let onSelectMessage: (CodexMessage) -> Void
 
     private let scrollBottomAnchorID = "pinch-prompt-scroll-bottom-anchor"
-    private let topMessageBlurHeight: CGFloat = 112
+    private static let scrollCoordinateSpaceName = "pinch-prompt-scroll-space"
+    private static let topMessageFadeHeight: CGFloat = 108
 
     private var promptMessages: [CodexMessage] {
         messages.filter { message in
@@ -34,6 +35,13 @@ struct PinchView: View {
                                 ) {
                                     onSelectMessage(message)
                                 }
+                                .visualEffect { content, geometry in
+                                    let minY = geometry.frame(in: .named(Self.scrollCoordinateSpaceName)).minY
+                                    let progress = Self.topSofteningProgress(for: minY)
+                                    content
+                                        .blur(radius: 3.5 * progress)
+                                        .opacity(1 - (0.5 * progress))
+                                }
                             }
 
                             Color.clear
@@ -45,6 +53,7 @@ struct PinchView: View {
                         .padding(.top, 58)
                         .padding(.bottom, 20)
                     }
+                    .coordinateSpace(name: Self.scrollCoordinateSpaceName)
                     .defaultScrollAnchor(.bottom, for: .initialOffset)
                     .scrollDismissesKeyboard(.interactively)
                     .onAppear {
@@ -56,10 +65,9 @@ struct PinchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.thinMaterial)
-        .background(Color(.secondarySystemBackground).opacity(0.58))
+        .background(Color(.secondarySystemBackground))
         .overlay(alignment: .top) {
-            topMessageBlur
+            topMessageFade
         }
         .overlay(alignment: .bottom) {
             Text("Tap a prompt to jump back")
@@ -73,32 +81,24 @@ struct PinchView: View {
         .accessibilityIdentifier("turn.pinch.promptList")
     }
 
-    private var topMessageBlur: some View {
-        Color.clear
-            .background(.thinMaterial)
-            .overlay {
-                LinearGradient(
-                    colors: [
-                        Color(.secondarySystemBackground).opacity(0.62),
-                        Color(.secondarySystemBackground).opacity(0.24),
-                        .clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-            .mask(
-                LinearGradient(
-                    stops: [
-                        Gradient.Stop(color: .black, location: 0),
-                        Gradient.Stop(color: .black.opacity(0.94), location: 0.46),
-                        Gradient.Stop(color: .clear, location: 1)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(height: topMessageBlurHeight)
+    private static func topSofteningProgress(for minY: CGFloat) -> CGFloat {
+        let fadeStart: CGFloat = 92
+        let fadeEnd: CGFloat = 18
+        let rawProgress = (fadeStart - minY) / (fadeStart - fadeEnd)
+        return min(max(rawProgress, 0), 1)
+    }
+
+    private var topMessageFade: some View {
+        LinearGradient(
+            stops: [
+                Gradient.Stop(color: Color(.secondarySystemBackground), location: 0),
+                Gradient.Stop(color: Color(.secondarySystemBackground).opacity(0.98), location: 0.48),
+                Gradient.Stop(color: Color(.secondarySystemBackground).opacity(0), location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+            .frame(height: Self.topMessageFadeHeight)
             .allowsHitTesting(false)
     }
 

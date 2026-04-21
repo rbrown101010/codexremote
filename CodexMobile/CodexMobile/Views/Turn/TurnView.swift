@@ -220,7 +220,7 @@ struct TurnView: View {
                 onTapTitle: showThreadPathPreview
             )
         }
-        .toolbarBackground(.thinMaterial, for: .navigationBar)
+        .toolbarBackground(Color(.secondarySystemBackground), for: .navigationBar)
         .toolbarBackground(isPinchChromeActive ? Visibility.visible : Visibility.automatic, for: .navigationBar)
         .overlay {
             if isShowingWorktreeHandoff {
