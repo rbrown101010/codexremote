@@ -40,44 +40,21 @@ struct HomeEmptyStateView<AuthSection: View, Footer: View>: View {
     }
 
     private var loadingBody: some View {
-        GeometryReader { proxy in
-            ZStack {
-                Color(.systemBackground)
-                    .ignoresSafeArea()
+        ZStack {
+            Color(.secondarySystemBackground)
+                .ignoresSafeArea()
 
-                loadingBackdrop(size: proxy.size)
-                    .ignoresSafeArea()
+            VStack(spacing: 22) {
+                HarmonyLoadingAnimationView()
+                    .frame(width: 92, height: 92)
 
-                VStack(spacing: 28) {
-                    Spacer(minLength: 0)
-
-                    VStack(spacing: 10) {
-                        Text("Harmony is loading...")
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
-                            .multilineTextAlignment(.center)
-                            .tracking(-0.7)
-
-                        Text("Connecting to Codex...")
-                            .font(.system(size: 19, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 24)
-
-                    HarmonyLoadingAnimationView()
-                        .frame(width: min(proxy.size.width * 0.76, 320), height: min(proxy.size.width * 0.76, 320))
-                        .padding(.top, 8)
-
-                    HarmonyLoadingBarView()
-                        .frame(width: min(proxy.size.width * 0.62, 240), height: 10)
-                        .padding(.top, -4)
-
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 40)
+                Text("Connecting")
+                    .font(.system(size: 25, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 28)
         }
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -185,45 +162,6 @@ struct HomeEmptyStateView<AuthSection: View, Footer: View>: View {
 
     // MARK: - Helpers
 
-    @ViewBuilder
-    private func loadingBackdrop(size: CGSize) -> some View {
-        let major = max(size.width, size.height)
-
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.black.opacity(0.07),
-                            Color.black.opacity(0.0)
-                        ],
-                        center: .center,
-                        startRadius: 12,
-                        endRadius: major * 0.42
-                    )
-                )
-                .frame(width: major * 0.82, height: major * 0.82)
-                .offset(x: -major * 0.16, y: -major * 0.18)
-                .blur(radius: 18)
-
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.black.opacity(0.045),
-                            Color.black.opacity(0.0)
-                        ],
-                        center: .center,
-                        startRadius: 10,
-                        endRadius: major * 0.34
-                    )
-                )
-                .frame(width: major * 0.68, height: major * 0.68)
-                .offset(x: major * 0.2, y: major * 0.16)
-                .blur(radius: 24)
-        }
-    }
-
     private var isBusy: Bool {
         switch connectionPhase {
         case .connecting, .loadingChats, .syncing:
@@ -300,146 +238,34 @@ private struct HarmonyLoadingAnimationView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
             let elapsed = timeline.date.timeIntervalSinceReferenceDate
 
+            let pulse = 0.96 + CGFloat((sin(elapsed * 2.0) + 1) * 0.03)
+            let sweep = Angle.radians(elapsed * 1.35)
+
             ZStack {
                 Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.black.opacity(0.09),
-                                Color.black.opacity(0.04),
-                                Color.black.opacity(0.0)
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 150
-                        )
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    .scaleEffect(pulse)
+
+                Circle()
+                    .trim(from: 0.08, to: 0.32)
+                    .stroke(
+                        Color.primary.opacity(0.48),
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
                     )
-                    .scaleEffect(0.88 + CGFloat((sin(elapsed * 1.25) + 1) * 0.04))
-                    .blur(radius: 18)
+                    .rotationEffect(sweep)
 
-                Canvas { context, size in
-                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    let minDimension = min(size.width, size.height)
-                    let ringConfigs: [(radius: CGFloat, lineWidth: CGFloat, opacity: Double, speed: Double, length: Double)] = [
-                        (minDimension * 0.23, 1.4, 0.22, 0.55, 0.52),
-                        (minDimension * 0.31, 1.8, 0.16, -0.38, 0.44),
-                        (minDimension * 0.39, 1.2, 0.12, 0.24, 0.36)
-                    ]
-
-                    for ring in ringConfigs {
-                        let rect = CGRect(
-                            x: center.x - ring.radius,
-                            y: center.y - ring.radius,
-                            width: ring.radius * 2,
-                            height: ring.radius * 2
-                        )
-
-                        let start = elapsed * ring.speed
-                        let normalizedStart = start - floor(start)
-                        let end = normalizedStart + ring.length
-                        var path = Path()
-                        path.addEllipse(in: rect)
-
-                        context.stroke(
-                            path.trimmedPath(from: normalizedStart, to: min(end, 1)),
-                            with: .color(.black.opacity(ring.opacity)),
-                            style: StrokeStyle(lineWidth: ring.lineWidth, lineCap: .round)
-                        )
-
-                        if end > 1 {
-                            context.stroke(
-                                path.trimmedPath(from: 0, to: end - 1),
-                                with: .color(.black.opacity(ring.opacity)),
-                                style: StrokeStyle(lineWidth: ring.lineWidth, lineCap: .round)
-                            )
-                        }
-                    }
-
-                    let dotConfigs: [(orbit: CGFloat, size: CGFloat, speed: Double, phase: Double, opacity: Double)] = [
-                        (minDimension * 0.23, 12, 1.05, 0.0, 0.95),
-                        (minDimension * 0.31, 9, -0.82, 1.7, 0.72),
-                        (minDimension * 0.39, 7, 0.58, 3.2, 0.48)
-                    ]
-
-                    for dot in dotConfigs {
-                        let angle = elapsed * dot.speed + dot.phase
-                        let position = CGPoint(
-                            x: center.x + cos(angle) * dot.orbit,
-                            y: center.y + sin(angle) * dot.orbit
-                        )
-                        let rect = CGRect(
-                            x: position.x - dot.size / 2,
-                            y: position.y - dot.size / 2,
-                            width: dot.size,
-                            height: dot.size
-                        )
-                        context.fill(Path(ellipseIn: rect), with: .color(.black.opacity(dot.opacity)))
+                HStack(spacing: 5) {
+                    ForEach(0..<3, id: \.self) { index in
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color.primary.opacity(0.85 - Double(index) * 0.2))
+                            .frame(width: 7, height: 32)
                     }
                 }
-
-                VStack(spacing: 10) {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.black.opacity(0.92))
-                        .frame(width: 66, height: 14)
-
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.black.opacity(0.86))
-                            .frame(width: 14, height: 66)
-
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.black.opacity(0.62))
-                            .frame(width: 14, height: 66)
-
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.black.opacity(0.38))
-                            .frame(width: 14, height: 66)
-                    }
-                }
-                .offset(y: CGFloat(sin(elapsed * 1.35)) * 4)
+                .scaleEffect(pulse)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .drawingGroup()
         .accessibilityHidden(true)
-    }
-}
-
-private struct HarmonyLoadingBarView: View {
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
-            let elapsed = timeline.date.timeIntervalSinceReferenceDate
-
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                let travel = width + 72
-                let normalized = elapsed.remainder(dividingBy: 1.7) / 1.7
-                let headX = normalized * travel - 36
-
-                ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.black.opacity(0.08))
-                        .frame(height: 2)
-
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(0.0),
-                                    Color.black.opacity(0.78),
-                                    Color.black.opacity(0.0)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: 72, height: 4)
-                        .offset(x: headX)
-                        .blur(radius: 0.3)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            }
-        }
-        .accessibilityLabel("Loading")
     }
 }

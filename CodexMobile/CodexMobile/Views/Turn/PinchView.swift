@@ -177,7 +177,7 @@ private struct PinchPromptRow: View {
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
-        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
