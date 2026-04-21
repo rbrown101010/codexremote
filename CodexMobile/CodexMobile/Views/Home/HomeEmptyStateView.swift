@@ -41,15 +41,22 @@ struct HomeEmptyStateView<AuthSection: View, Footer: View>: View {
 
     private var loadingBody: some View {
         ZStack {
-            Color(.secondarySystemBackground)
+            Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
-            VStack(spacing: 22) {
-                HarmonyLoadingAnimationView()
-                    .frame(width: 92, height: 92)
+            VStack(spacing: 18) {
+                ZStack {
+                    Circle()
+                        .fill(Color(.systemBackground))
+                        .shadow(color: Color.black.opacity(0.08), radius: 24, y: 12)
+
+                    HarmonyLoadingAnimationView()
+                        .frame(width: 58, height: 58)
+                }
+                .frame(width: 112, height: 112)
 
                 Text("Connecting")
-                    .font(.system(size: 25, weight: .semibold, design: .rounded))
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
             }
@@ -237,31 +244,30 @@ private struct HarmonyLoadingAnimationView: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { timeline in
             let elapsed = timeline.date.timeIntervalSinceReferenceDate
-
-            let pulse = 0.96 + CGFloat((sin(elapsed * 2.0) + 1) * 0.03)
-            let sweep = Angle.radians(elapsed * 1.35)
+            let sweep = Angle.radians(elapsed * 1.55)
 
             ZStack {
                 Circle()
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    .scaleEffect(pulse)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1.5)
 
                 Circle()
-                    .trim(from: 0.08, to: 0.32)
+                    .trim(from: 0.04, to: 0.28)
                     .stroke(
-                        Color.primary.opacity(0.48),
-                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                        Color.primary.opacity(0.52),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
                     .rotationEffect(sweep)
 
-                HStack(spacing: 5) {
+                HStack(alignment: .center, spacing: 5) {
                     ForEach(0..<3, id: \.self) { index in
+                        let wave = sin(elapsed * 2.8 + Double(index) * 0.72)
+                        let height = 24 + CGFloat((wave + 1) * 5)
+
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(Color.primary.opacity(0.85 - Double(index) * 0.2))
-                            .frame(width: 7, height: 32)
+                            .fill(Color.primary.opacity(0.82 - Double(index) * 0.16))
+                            .frame(width: 7, height: height)
                     }
                 }
-                .scaleEffect(pulse)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

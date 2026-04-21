@@ -48,20 +48,22 @@ extension CodexService {
         messagesByThread[threadId] ?? []
     }
 
-    // Centralizes first-open display state so reconnect jitter does not bounce
-    // an existing chat between loading and the empty placeholder.
+    // Centralizes first-open display state so thread opens do not flash stale
+    // locally cached rows while the authoritative history refresh is in flight.
     func threadDisplayPhase(threadId: String) -> ThreadDisplayPhase {
-        if !messages(for: threadId).isEmpty || threadHasActiveOrRunningTurn(threadId) {
+        let hasActiveOrRunningTurn = threadHasActiveOrRunningTurn(threadId)
+
+        if loadingThreadIDs.contains(threadId), !hasActiveOrRunningTurn {
+            return .loading
+        }
+
+        if !messages(for: threadId).isEmpty || hasActiveOrRunningTurn {
             return .ready
         }
 
         if shouldSkipInitialDisplayHydration(threadId: threadId)
             || shouldShowImmediateEmptyPlaceholder(threadId: threadId) {
             return .empty
-        }
-
-        if loadingThreadIDs.contains(threadId) {
-            return .loading
         }
 
         if !hydratedThreadIDs.contains(threadId) {

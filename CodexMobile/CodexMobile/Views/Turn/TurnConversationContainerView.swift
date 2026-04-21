@@ -32,6 +32,7 @@ struct TurnConversationContainerView: View {
     let usageToastOverlay: AnyView
     let isRepositoryLoadingToastVisible: Bool
     @Binding var isPinchViewPresented: Bool
+    @Binding var isPinchChromeActive: Bool
     let onRetryUserMessage: (String) -> Void
     let onTapAssistantRevert: (CodexMessage) -> Void
     let onTapSubagent: (CodexSubagentThreadPresentation) -> Void
@@ -149,10 +150,14 @@ struct TurnConversationContainerView: View {
     private func handleExternalPinchPresentationChange(_ isPresented: Bool) {
         if isPresented {
             pinchPresentationProgress = 1
+            isPinchChromeActive = true
         } else if pinchPresentationProgress > 0 {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                 pinchPresentationProgress = 0
             }
+            isPinchChromeActive = false
+        } else {
+            isPinchChromeActive = false
         }
     }
 
@@ -215,6 +220,7 @@ struct TurnConversationContainerView: View {
 
                 let progress = min(max((1 - value) / 0.22, 0), 1)
                 pinchPresentationProgress = progress
+                isPinchChromeActive = progress > 0
 
                 if progress > 0.08, !didStartPinchPreview {
                     didStartPinchPreview = true
@@ -236,6 +242,7 @@ struct TurnConversationContainerView: View {
                     withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
                         pinchPresentationProgress = 0
                     }
+                    isPinchChromeActive = false
                 }
 
                 didActivatePinchGesture = false
@@ -265,6 +272,7 @@ struct TurnConversationContainerView: View {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
             isPinchViewPresented = false
             pinchPresentationProgress = 0
+            isPinchChromeActive = false
         }
     }
 
@@ -274,6 +282,7 @@ struct TurnConversationContainerView: View {
         withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
             isPinchViewPresented = false
             pinchPresentationProgress = 0
+            isPinchChromeActive = false
         }
     }
 

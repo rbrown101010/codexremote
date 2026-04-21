@@ -33,6 +33,7 @@ struct TurnView: View {
     @State private var isShowingWorktreeHandoff = false
     @State private var isShowingForkWorktree = false
     @State private var isPinchViewPresented = false
+    @State private var isPinchChromeActive = false
     @State private var macHandoffErrorMessage: String?
     @State private var isHandingOffToMac = false
     @State private var isStartingSiblingChat = false
@@ -57,8 +58,9 @@ struct TurnView: View {
         let planSessionSource = codex.currentPlanSessionSource(for: thread.id)
         let gitWorkingDirectory = resolvedThread.gitWorkingDirectory
         let isThreadRunning = renderSnapshot.isThreadRunning
-        let isEmptyThread = renderSnapshot.messages.isEmpty
         let threadDisplayPhase = codex.threadDisplayPhase(threadId: thread.id)
+        let isShowingThreadLoadingState = threadDisplayPhase == .loading
+        let isEmptyThread = isShowingThreadLoadingState || renderSnapshot.messages.isEmpty
         // Keep the service-owned loading vs empty-state decision intact while
         // history hydration catches up for previously active conversations.
         let resolvedEmptyConversationState = resolvedEmptyState(for: threadDisplayPhase)
@@ -97,17 +99,17 @@ struct TurnView: View {
 
         return TurnConversationContainerView(
                 threadID: thread.id,
-                messages: renderSnapshot.messages,
+                messages: isShowingThreadLoadingState ? [] : renderSnapshot.messages,
                 timelineChangeToken: renderSnapshot.timelineChangeToken,
-                activeTurnID: activeTurnID,
-                isThreadRunning: isThreadRunning,
-                latestTurnTerminalState: renderSnapshot.latestTurnTerminalState,
-                completedTurnIDs: renderSnapshot.completedTurnIDs,
-                stoppedTurnIDs: renderSnapshot.stoppedTurnIDs,
-                assistantRevertStatesByMessageID: renderSnapshot.assistantRevertStatesByMessageID,
+                activeTurnID: isShowingThreadLoadingState ? nil : activeTurnID,
+                isThreadRunning: isShowingThreadLoadingState ? false : isThreadRunning,
+                latestTurnTerminalState: isShowingThreadLoadingState ? nil : renderSnapshot.latestTurnTerminalState,
+                completedTurnIDs: isShowingThreadLoadingState ? [] : renderSnapshot.completedTurnIDs,
+                stoppedTurnIDs: isShowingThreadLoadingState ? [] : renderSnapshot.stoppedTurnIDs,
+                assistantRevertStatesByMessageID: isShowingThreadLoadingState ? [:] : renderSnapshot.assistantRevertStatesByMessageID,
                 planSessionSource: planSessionSource,
                 allowsAssistantPlanFallbackRecovery: planSessionSource == .compatibilityFallback,
-                threadMessagesForPlanMatching: renderSnapshot.planMatchingMessages,
+                threadMessagesForPlanMatching: isShowingThreadLoadingState ? [] : renderSnapshot.planMatchingMessages,
                 errorMessage: nil,
                 composerRecoveryAccessory: composerRecoveryAccessory,
                 shouldAnchorToAssistantResponse: shouldAnchorToAssistantResponseBinding,
@@ -131,6 +133,7 @@ struct TurnView: View {
                 usageToastOverlay: AnyView(EmptyView()),
                 isRepositoryLoadingToastVisible: false,
                 isPinchViewPresented: $isPinchViewPresented,
+                isPinchChromeActive: $isPinchChromeActive,
                 onRetryUserMessage: { messageText in
                     viewModel.input = messageText
                     isInputFocused = true
@@ -202,6 +205,7 @@ struct TurnView: View {
                     HapticFeedback.shared.triggerImpactFeedback(style: .light)
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                         isPinchViewPresented = false
+                        isPinchChromeActive = false
                     }
                 },
                 onGitAction: { action in
@@ -216,6 +220,8 @@ struct TurnView: View {
                 onTapTitle: showThreadPathPreview
             )
         }
+        .toolbarBackground(Color(.secondarySystemBackground), for: .navigationBar)
+        .toolbarBackground(isPinchChromeActive ? Visibility.visible : Visibility.automatic, for: .navigationBar)
         .overlay {
             if isShowingWorktreeHandoff {
                 TurnWorktreeHandoffOverlay(
