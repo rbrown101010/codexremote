@@ -8,7 +8,6 @@ import SwiftUI
 
 struct PinchView: View {
     let messages: [CodexMessage]
-    let onClose: () -> Void
     let onSelectMessage: (CodexMessage) -> Void
 
     private let scrollBottomAnchorID = "pinch-prompt-scroll-bottom-anchor"
@@ -66,19 +65,6 @@ struct PinchView: View {
                 .padding(.vertical, 8)
                 .background(.regularMaterial, in: Capsule())
                 .padding(.bottom, 12)
-        }
-        .overlay(alignment: .topTrailing) {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(AppFont.system(size: 13, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 34, height: 34)
-                    .background(.regularMaterial, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 10)
-            .padding(.trailing, 14)
-            .accessibilityLabel("Close Pinch view")
         }
         .accessibilityIdentifier("turn.pinch.promptList")
     }
@@ -138,50 +124,54 @@ private struct PinchPromptRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            VStack(alignment: .leading, spacing: 8) {
-                if !metadataParts.isEmpty {
-                    Text(metadataParts.joined(separator: " - "))
-                        .font(AppFont.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
+        HStack(alignment: .bottom, spacing: 0) {
+            Spacer(minLength: 44)
 
-                Text(promptText)
-                    .font(AppFont.system(size: 14, weight: .regular))
-                    .foregroundStyle(.primary)
-                    .lineSpacing(2)
-                    .lineLimit(isExpanded ? nil : 3)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onSelect()
-            }
-
-            if isExpandable {
-                Button {
-                    HapticFeedback.shared.triggerSelectionFeedback()
-                    withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
-                        isExpanded.toggle()
+            HStack(alignment: .bottom, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !metadataParts.isEmpty {
+                        Text(metadataParts.joined(separator: " - "))
+                            .font(AppFont.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
                     }
-                } label: {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(AppFont.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 26, height: 24)
-                        .contentShape(Rectangle())
+
+                    Text(promptText)
+                        .font(AppFont.system(size: 14, weight: .regular))
+                        .foregroundStyle(.primary)
+                        .lineSpacing(2)
+                        .lineLimit(isExpanded ? nil : 3)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isExpanded ? "Collapse prompt" : "Expand prompt")
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onSelect()
+                }
+
+                if isExpandable {
+                    Button {
+                        HapticFeedback.shared.triggerSelectionFeedback()
+                        withAnimation(.spring(response: 0.24, dampingFraction: 0.88)) {
+                            isExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(AppFont.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 26, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isExpanded ? "Collapse prompt" : "Expand prompt")
+                }
             }
-        }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 12)
-        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color(.tertiarySystemFill).opacity(0.8))
+                    .stroke(.secondary.opacity(0.08))
+            }
         }
     }
 }

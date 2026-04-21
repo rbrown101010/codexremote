@@ -31,6 +31,7 @@ struct TurnConversationContainerView: View {
     let repositoryLoadingToastOverlay: AnyView
     let usageToastOverlay: AnyView
     let isRepositoryLoadingToastVisible: Bool
+    @Binding var isPinchViewPresented: Bool
     let onRetryUserMessage: (String) -> Void
     let onTapAssistantRevert: (CodexMessage) -> Void
     let onTapSubagent: (CodexSubagentThreadPresentation) -> Void
@@ -40,7 +41,6 @@ struct TurnConversationContainerView: View {
     @State private var cachedMessageLayout = TimelineMessageLayout.empty
     @State private var lastMessageLayoutThreadID: String?
     @State private var lastMessageLayoutToken: Int = -1
-    @State private var isPinchViewPresented = false
     @State private var didActivatePinchGesture = false
     @State private var didStartPinchPreview = false
     @State private var pinchPresentationProgress: CGFloat = 0
@@ -110,9 +110,7 @@ struct TurnConversationContainerView: View {
                 .saturation(pinchBackgroundSaturation)
 
             if isPinchViewPresented || pinchPresentationProgress > 0 {
-                PinchView(messages: messages) {
-                    dismissPinchView()
-                } onSelectMessage: { message in
+                PinchView(messages: messages) { message in
                     jumpToMessageFromPinchView(message)
                 }
                 .opacity(pinchOverlayProgress)

@@ -33,12 +33,14 @@ struct TurnToolbarContent: ToolbarContent {
     let isRunningGitAction: Bool
     let showsDiscardRuntimeChangesAndSync: Bool
     let gitSyncState: String?
+    let isPinchViewPresented: Bool
     var onTapMacHandoff: (() -> Void)?
     var onTapWorktreeHandoff: (() -> Void)?
     var onTapNewChat: (() -> Void)?
     var onTapRepoDiff: (() -> Void)?
     var onTapReconnectToMac: (() -> Void)?
     var onTapWakeMacScreen: (() -> Void)?
+    var onClosePinchView: (() -> Void)?
     let onGitAction: (TurnGitActionKind) -> Void
 
     @Binding var isShowingPathSheet: Bool
@@ -88,125 +90,152 @@ struct TurnToolbarContent: ToolbarContent {
 
         if hasAnyTrailingAction {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Section("Settings") {
-                        if let settingsStatusText, showsSettingsAttention {
-                            TurnToolbarMenuInfoRow(
-                                text: settingsStatusText,
-                                tint: .red
-                            )
-                        }
-
-                        if canReconnectToMac {
-                            Button {
-                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                                onTapReconnectToMac?()
-                            } label: {
-                                HStack(spacing: 10) {
-                                    ResizableThreadActionSymbol(systemName: "arrow.clockwise", pointSize: 13)
-                                    Text(isReconnectingToMac ? "Reconnecting..." : "Reconnect to Mac")
-                                }
-                            }
-                            .disabled(isReconnectingToMac || onTapReconnectToMac == nil)
-                        }
-
-                        if canWakeMacScreen {
-                            Button {
-                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                                onTapWakeMacScreen?()
-                            } label: {
-                                HStack(spacing: 10) {
-                                    ResizableThreadActionSymbol(systemName: "display", pointSize: 13)
-                                    Text("Wake Mac Screen")
-                                }
-                            }
-                            .disabled(onTapWakeMacScreen == nil)
-                        }
-
-                        NavigationLink(value: "settings") {
-                            Label("Open Settings", systemImage: "gearshape")
-                        }
+                if isPinchViewPresented {
+                    Button {
+                        onClosePinchView?()
+                    } label: {
+                        ResizableThreadActionSymbol(systemName: "xmark", pointSize: 15)
+                            .foregroundStyle(.primary)
+                            .frame(width: 24, height: 24)
                     }
-
-                    if showsThreadActions {
-                        Section("Chat") {
-                            Button {
-                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                                onTapMacHandoff?()
-                            } label: {
-                                HStack(spacing: 10) {
-                                    ResizableThreadActionSymbol(systemName: "arrow.left.arrow.right", pointSize: 13)
-                                    Text("Hand off to Mac")
-                                }
-                            }
-                            .disabled(!canTapMacHandoff)
-
-                            Button {
-                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                                onTapWorktreeHandoff?()
-                            } label: {
-                                CodexWorktreeMenuLabelRow(
-                                    title: isCreatingGitWorktree ? "Preparing worktree..." : worktreeHandoffTitle,
-                                    pointSize: 12,
-                                    weight: .regular
-                                )
-                            }
-                            .disabled(!canTapWorktreeHandoff)
-
-                            Button {
-                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                                onTapNewChat?()
-                            } label: {
-                                HStack(spacing: 10) {
-                                    ResizableThreadActionSymbol(systemName: "plus.app", pointSize: 13)
-                                    Text("New chat")
-                                }
-                            }
-                            .disabled(!canTapNewChat)
-                        }
-                    }
-
-                    if let repoDiffTotals {
-                        Section("Changes") {
-                            Button {
-                                HapticFeedback.shared.triggerImpactFeedback(style: .light)
-                                onTapRepoDiff?()
-                            } label: {
-                                Label(
-                                    "+\(repoDiffTotals.additions) -\(repoDiffTotals.deletions)",
-                                    systemImage: "doc.text.magnifyingglass"
-                                )
-                            }
-                            .disabled(onTapRepoDiff == nil || isLoadingRepoDiff)
-                        }
-                    }
-
-                    if showsGitActions {
-                        Section("Update") {
-                            gitActionButton(for: .syncNow)
-                        }
-
-                        Section("Write") {
-                            ForEach([TurnGitActionKind.commit, .push, .commitAndPush, .createPR], id: \.self) { action in
-                                gitActionButton(for: action)
-                            }
-                        }
-
-                        if showsDiscardRuntimeChangesAndSync {
-                            Section("Recovery") {
-                                gitActionButton(for: .discardRuntimeChangesAndSync)
-                            }
-                        }
-                    }
-                } label: {
-                    TurnToolbarCombinedActionsLabel(
-                        isLoading: isThreadActionLoading || isRunningGitAction,
-                        showsAttention: showsSettingsAttention
+                    .buttonStyle(.plain)
+                    .adaptiveToolbarItem(in: Circle())
+                    .accessibilityLabel("Close Pinch view")
+                } else {
+                    threadActionsMenu(
+                        isThreadActionLoading: isThreadActionLoading,
+                        canTapMacHandoff: canTapMacHandoff,
+                        canTapWorktreeHandoff: canTapWorktreeHandoff,
+                        canTapNewChat: canTapNewChat
                     )
                 }
-                .accessibilityLabel("Chat actions")
             }
         }
+    }
+
+    private func threadActionsMenu(
+        isThreadActionLoading: Bool,
+        canTapMacHandoff: Bool,
+        canTapWorktreeHandoff: Bool,
+        canTapNewChat: Bool
+    ) -> some View {
+        Menu {
+            Section("Settings") {
+                if let settingsStatusText, showsSettingsAttention {
+                    TurnToolbarMenuInfoRow(
+                        text: settingsStatusText,
+                        tint: .red
+                    )
+                }
+
+                if canReconnectToMac {
+                    Button {
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onTapReconnectToMac?()
+                    } label: {
+                        HStack(spacing: 10) {
+                            ResizableThreadActionSymbol(systemName: "arrow.clockwise", pointSize: 13)
+                            Text(isReconnectingToMac ? "Reconnecting..." : "Reconnect to Mac")
+                        }
+                    }
+                    .disabled(isReconnectingToMac || onTapReconnectToMac == nil)
+                }
+
+                if canWakeMacScreen {
+                    Button {
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onTapWakeMacScreen?()
+                    } label: {
+                        HStack(spacing: 10) {
+                            ResizableThreadActionSymbol(systemName: "display", pointSize: 13)
+                            Text("Wake Mac Screen")
+                        }
+                    }
+                    .disabled(onTapWakeMacScreen == nil)
+                }
+
+                NavigationLink(value: "settings") {
+                    Label("Open Settings", systemImage: "gearshape")
+                }
+            }
+
+            if showsThreadActions {
+                Section("Chat") {
+                    Button {
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onTapMacHandoff?()
+                    } label: {
+                        HStack(spacing: 10) {
+                            ResizableThreadActionSymbol(systemName: "arrow.left.arrow.right", pointSize: 13)
+                            Text("Hand off to Mac")
+                        }
+                    }
+                    .disabled(!canTapMacHandoff)
+
+                    Button {
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onTapWorktreeHandoff?()
+                    } label: {
+                        CodexWorktreeMenuLabelRow(
+                            title: isCreatingGitWorktree ? "Preparing worktree..." : worktreeHandoffTitle,
+                            pointSize: 12,
+                            weight: .regular
+                        )
+                    }
+                    .disabled(!canTapWorktreeHandoff)
+
+                    Button {
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onTapNewChat?()
+                    } label: {
+                        HStack(spacing: 10) {
+                            ResizableThreadActionSymbol(systemName: "plus.app", pointSize: 13)
+                            Text("New chat")
+                        }
+                    }
+                    .disabled(!canTapNewChat)
+                }
+            }
+
+            if let repoDiffTotals {
+                Section("Changes") {
+                    Button {
+                        HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                        onTapRepoDiff?()
+                    } label: {
+                        Label(
+                            "+\(repoDiffTotals.additions) -\(repoDiffTotals.deletions)",
+                            systemImage: "doc.text.magnifyingglass"
+                        )
+                    }
+                    .disabled(onTapRepoDiff == nil || isLoadingRepoDiff)
+                }
+            }
+
+            if showsGitActions {
+                Section("Update") {
+                    gitActionButton(for: .syncNow)
+                }
+
+                Section("Write") {
+                    ForEach([TurnGitActionKind.commit, .push, .commitAndPush, .createPR], id: \.self) { action in
+                        gitActionButton(for: action)
+                    }
+                }
+
+                if showsDiscardRuntimeChangesAndSync {
+                    Section("Recovery") {
+                        gitActionButton(for: .discardRuntimeChangesAndSync)
+                    }
+                }
+            }
+        } label: {
+            TurnToolbarCombinedActionsLabel(
+                isLoading: isThreadActionLoading || isRunningGitAction,
+                showsAttention: showsSettingsAttention
+            )
+        }
+        .accessibilityLabel("Chat actions")
     }
 
     private func gitActionButton(for action: TurnGitActionKind) -> some View {

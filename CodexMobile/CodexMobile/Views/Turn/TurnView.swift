@@ -32,6 +32,7 @@ struct TurnView: View {
     @State private var isShowingMacHandoffConfirm = false
     @State private var isShowingWorktreeHandoff = false
     @State private var isShowingForkWorktree = false
+    @State private var isPinchViewPresented = false
     @State private var macHandoffErrorMessage: String?
     @State private var isHandingOffToMac = false
     @State private var isStartingSiblingChat = false
@@ -129,6 +130,7 @@ struct TurnView: View {
                 repositoryLoadingToastOverlay: AnyView(EmptyView()),
                 usageToastOverlay: AnyView(EmptyView()),
                 isRepositoryLoadingToastVisible: false,
+                isPinchViewPresented: $isPinchViewPresented,
                 onRetryUserMessage: { messageText in
                     viewModel.input = messageText
                     isInputFocused = true
@@ -189,12 +191,19 @@ struct TurnView: View {
                 isRunningGitAction: viewModel.isRunningGitAction,
                 showsDiscardRuntimeChangesAndSync: viewModel.shouldShowDiscardRuntimeChangesAndSync,
                 gitSyncState: viewModel.gitSyncState,
+                isPinchViewPresented: isPinchViewPresented,
                 onTapMacHandoff: onTapMacHandoff,
                 onTapWorktreeHandoff: onTapWorktreeHandoff,
                 onTapNewChat: onTapNewChat,
                 onTapRepoDiff: onTapRepoDiff,
                 onTapReconnectToMac: reconnectAction,
                 onTapWakeMacScreen: wakeMacDisplayAction,
+                onClosePinchView: {
+                    HapticFeedback.shared.triggerImpactFeedback(style: .light)
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                        isPinchViewPresented = false
+                    }
+                },
                 onGitAction: { action in
                     handleGitActionSelection(
                         action,
