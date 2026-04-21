@@ -138,7 +138,7 @@ private struct PinchPromptRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .bottom, spacing: 10) {
             VStack(alignment: .leading, spacing: 8) {
                 if !metadataParts.isEmpty {
                     Text(metadataParts.joined(separator: " - "))
@@ -166,11 +166,11 @@ private struct PinchPromptRow: View {
                         isExpanded.toggle()
                     }
                 } label: {
-                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle")
-                        .font(AppFont.system(size: 18, weight: .semibold))
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(AppFont.system(size: 14, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .contentShape(Circle())
+                        .frame(width: 26, height: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isExpanded ? "Collapse prompt" : "Expand prompt")
